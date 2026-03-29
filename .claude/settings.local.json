@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /d/dev/business/Leonis-Studios-Project/project_constantine -maxdepth 2 -type f -name *.yaml -o -name *.yml -o -name *.json -o -name *.toml -o -name *.config -o -name *.cfg)",
+      "Read(//c/Users/shira/flutter/bin/**)",
+      "Read(//c/flutter/bin/**)",
+      "Bash(cmd.exe /c \"where flutter\")",
+      "Bash(cmd.exe /c 'where flutter')",
+      "Read(//mnt/c/src/flutter/**)",
+      "Read(//c/src/flutter/**)",
+      "Bash(/d/flutter/bin/flutter analyze:*)"
+    ]
+  }
+}

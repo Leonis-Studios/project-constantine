@@ -1,0 +1,46 @@
+name: stock_simulator
+description: A fake stock market simulator — buy and sell stocks, watch prices move, and react to random daily events.
+version: 1.0.0+1
+
+# Dart SDK constraint. Flutter 3.x ships with Dart 3.x.
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # ── State management ─────────────────────────────────────────────────────────
+  # provider is the officially recommended lightweight state management solution.
+  # We use ChangeNotifier + MultiProvider — low boilerplate, easy to extend.
+  provider: ^6.1.2
+
+  # ── Persistence ──────────────────────────────────────────────────────────────
+  # shared_preferences stores simple key-value data on disk so the simulation
+  # state (portfolio, stock prices, events) survives app restarts.
+  shared_preferences: ^2.2.3
+
+  # ── Number formatting ────────────────────────────────────────────────────────
+  # intl gives us NumberFormat for nice output like "$1,234.56" and "+2.4%".
+  intl: ^0.19.0
+
+  # ── Charts ───────────────────────────────────────────────────────────────────
+  # fl_chart renders the sparkline and detail price charts on stock screens.
+  fl_chart: ^0.68.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  # Enforces Dart/Flutter style guidelines — run `flutter analyze` to check.
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+  # To add assets (images, fonts) later, uncomment and configure below:
+  # assets:
+  #   - assets/images/
+  # fonts:
+  #   - family: MyFont
+  #     fonts:
+  #       - asset: fonts/MyFont-Regular.ttf
