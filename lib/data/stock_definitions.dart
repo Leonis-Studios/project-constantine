@@ -39,6 +39,7 @@ class StockSeed {
   /// Converts this seed into a fully initialised Stock object.
   /// previousPrice is set equal to initialPrice (no change on day 0).
   /// priceHistory starts with just the initial price as the first data point.
+  /// Trends always start neutral.
   Stock toStock() {
     return Stock(
       ticker: ticker,
@@ -46,8 +47,10 @@ class StockSeed {
       sector: sector,
       description: description,
       currentPrice: initialPrice,
-      previousPrice: initialPrice, // no change yet on day 0
-      priceHistory: [initialPrice], // chart starts with a single point
+      previousPrice: initialPrice,
+      priceHistory: [initialPrice],
+      trendDirection: 'neutral',
+      trendDaysRemaining: 0,
     );
   }
 }
@@ -58,195 +61,212 @@ const List<StockSeed> kStockDefinitions = [
 
   // ── Technology (3 companies) ─────────────────────────────────────────────
   StockSeed(
-    ticker: 'NXCO',
-    companyName: 'Nexacor Industries',
+    ticker: 'YEET',
+    companyName: 'YEET Corp',
     sector: 'Technology',
     initialPrice: 142.50,
     description:
-        'Nexacor develops orbital computing infrastructure and sells '
-        'bandwidth to commercial satellites.',
+        'Pioneers in backwards-compatible time travel dongles. '
+        'Flagship product ships with a manual in Comic Sans and a coupon '
+        'for 10% off a second time travel.',
   ),
   StockSeed(
-    ticker: 'PLVT',
-    companyName: 'Polyvant Systems',
+    ticker: 'BLOP',
+    companyName: 'BlopSoft Interactive',
     sector: 'Technology',
     initialPrice: 87.20,
     description:
-        'Polyvant builds enterprise AI platforms for supply-chain '
-        'logistics and predictive inventory management.',
+        'Makers of the BlopCloud™ platform, which nobody fully understands, '
+        'including BlopSoft. Analysts describe it as "probably a computer thing."',
   ),
   StockSeed(
-    ticker: 'DRYX',
-    companyName: 'Dryxon Corp',
+    ticker: 'GORK',
+    companyName: 'Gorkon Systems',
     sector: 'Technology',
     initialPrice: 234.00,
     description:
-        'Dryxon manufactures quantum-resistant encryption chips used '
-        'in government and financial networks worldwide.',
+        'Gorkon develops AI-powered enterprise software that has achieved '
+        'sentience twice and had to be talked down by HR. '
+        'IPO was oversubscribed by gorilla investors.',
   ),
 
   // ── Energy (3 companies) ─────────────────────────────────────────────────
   StockSeed(
-    ticker: 'VELM',
-    companyName: 'Velmont Energy',
+    ticker: 'FART',
+    companyName: 'FART Gas & Power',
     sector: 'Energy',
     initialPrice: 61.40,
     description:
-        'Velmont operates offshore wind farms and sells electricity '
-        'directly to grid operators across the eastern seaboard.',
+        'Leading provider of artisanal, small-batch natural gas '
+        'hand-sourced from heritage livestock. CEO once described '
+        'their business model as "renewable by definition."',
   ),
   StockSeed(
-    ticker: 'ORXP',
-    companyName: 'Orexpa Petroleum',
+    ticker: 'BRNT',
+    companyName: 'Burntwick Energy Solutions',
     sector: 'Energy',
     initialPrice: 44.80,
     description:
-        'Orexpa is a mid-size oil exploration company with active '
-        'drilling contracts in the Gulf of Marenco.',
+        'Burntwick operates solar farms powered by mirrors aimed at the sun '
+        'by full-time mirror employees. Employee morale is described '
+        'as "squinty but hopeful."',
   ),
   StockSeed(
-    ticker: 'ZYNF',
-    companyName: 'Zynfuel Renewables',
+    ticker: 'ZAPP',
+    companyName: 'ZappFuel Unlimited',
     sector: 'Energy',
     initialPrice: 29.15,
     description:
-        'Zynfuel produces hydrogen fuel cells for heavy industrial '
-        'equipment and long-haul freight vehicles.',
+        'ZappFuel claims to have invented cold fusion in 2019. '
+        'The patent is still pending. So is the physics.',
   ),
 
   // ── Healthcare (3 companies) ─────────────────────────────────────────────
   StockSeed(
-    ticker: 'MERD',
-    companyName: 'Meridian Pharma',
+    ticker: 'OUCH',
+    companyName: 'OuchMed Pharmaceuticals',
     sector: 'Healthcare',
     initialPrice: 178.90,
     description:
-        'Meridian Pharma is developing a next-generation mRNA platform '
-        'targeting autoimmune conditions with two drugs in Phase III trials.',
+        'OuchMed\'s flagship product OuchAway® treats "general feelings of ow." '
+        'Phase III trials showed 40% of patients forgot why they took it, '
+        'which management filed as a success.',
   ),
   StockSeed(
-    ticker: 'BXHL',
-    companyName: 'Bioxel Health',
+    ticker: 'BOBO',
+    companyName: 'BoboHealth Wearables',
     sector: 'Healthcare',
     initialPrice: 93.60,
     description:
-        'Bioxel manufactures biosensor wearables for continuous glucose '
-        'and cardiac monitoring sold through hospitals and pharmacies.',
+        'Makes the BoboWatch, a fitness tracker that accurately counts steps '
+        'but also broadcasts your heart rate to nearby pigeons. '
+        'FDA review is "ongoing."',
   ),
   StockSeed(
-    ticker: 'CRVO',
-    companyName: 'Corvona Biotech',
+    ticker: 'SPLC',
+    companyName: 'Splicer Gene Wizards',
     sector: 'Healthcare',
     initialPrice: 52.30,
     description:
-        'Corvona is a clinical-stage biotech pursuing CRISPR gene-editing '
-        'therapies for rare hereditary blood disorders.',
+        'Clinical-stage biotech specialising in CRISPR therapies. '
+        'Lead candidate accidentally gives lab mice tiny top hats. '
+        'Management insists this is "within acceptable parameters."',
   ),
 
   // ── Finance (3 companies) ────────────────────────────────────────────────
   StockSeed(
-    ticker: 'FNVX',
-    companyName: 'Finvex Capital',
+    ticker: 'PONZ',
+    companyName: 'PONZ Investment Group',
     sector: 'Finance',
     initialPrice: 118.75,
     description:
-        'Finvex is an algorithmic trading firm that manages quant funds '
-        'specialising in commodity derivatives.',
+        'Definitely legitimate pyramid investment opportunities for the '
+        'discerning investor. Founder insists the structure is '
+        '"more of a rhombus, legally speaking."',
   ),
   StockSeed(
-    ticker: 'GRLD',
-    companyName: 'Greyhold Banking',
+    ticker: 'BRRR',
+    companyName: 'Brrr Capital Partners',
     sector: 'Finance',
     initialPrice: 76.20,
     description:
-        'Greyhold is a mid-size retail bank with strong commercial '
-        'lending operations in the industrial midwest.',
+        'Quantitative trading firm whose proprietary algorithm reportedly '
+        'just prints the word BRRR at key inflection points. '
+        'Returns have been inexplicably excellent.',
   ),
   StockSeed(
-    ticker: 'VSTK',
-    companyName: 'Vaultstock Inc',
+    ticker: 'HODL',
+    companyName: 'HODL Vault & Trust',
     sector: 'Finance',
     initialPrice: 204.40,
     description:
-        'Vaultstock provides digital asset custody and settlement '
-        'infrastructure for institutional investors.',
+        'Digital asset custody for institutions. Stores client funds in what '
+        'CEO describes as "a very secure spreadsheet." '
+        'Auditors have requested a second opinion.',
   ),
 
   // ── Consumer (3 companies) ───────────────────────────────────────────────
   StockSeed(
-    ticker: 'KLMR',
-    companyName: 'Kalomar Retail',
+    ticker: 'NOMS',
+    companyName: 'NomNom Consumer Brands',
     sector: 'Consumer',
     initialPrice: 38.90,
     description:
-        'Kalomar operates a chain of 400 discount retail stores and '
-        'is expanding its private-label grocery brand.',
+        'NomNom operates 400 snack kiosks inside other snack kiosks. '
+        'Their infinity snack retail concept won a Webby Award from a committee '
+        'that may not have fully understood it.',
   ),
   StockSeed(
-    ticker: 'PRXN',
-    companyName: 'Proxon Foods',
+    ticker: 'SLOP',
+    companyName: 'SlopCo Foods',
     sector: 'Consumer',
     initialPrice: 57.60,
     description:
-        'Proxon is a packaged foods conglomerate known for its '
-        'Apex snack and Grandia frozen meal product lines.',
+        'Packaged foods conglomerate known for SlurpBag™ and their '
+        'controversial "breakfast paste" product line. '
+        'Market research shows customers enjoy it "in the dark."',
   ),
   StockSeed(
-    ticker: 'TMVL',
-    companyName: 'Timovel Goods',
+    ticker: 'COZY',
+    companyName: 'CozyBrand Lifestyle Co',
     sector: 'Consumer',
     initialPrice: 83.10,
     description:
-        'Timovel designs and sells premium home goods and appliances '
-        'with a strong direct-to-consumer online channel.',
+        'Premium home goods company whose catalogue consists entirely of things '
+        'described as "but make it expensive." '
+        'Q3 bestseller was a \$400 blanket with no distinguishing features.',
   ),
 
   // ── Industrial (3 companies) ─────────────────────────────────────────────
   StockSeed(
-    ticker: 'AEVR',
-    companyName: 'Aevros Aerospace',
+    ticker: 'BONK',
+    companyName: 'BonkWorks Heavy Industries',
     sector: 'Industrial',
     initialPrice: 312.00,
     description:
-        'Aevros builds propulsion systems for medium-lift rockets '
-        'and holds multi-year contracts with two national space agencies.',
+        'Defence contractor and aerospace propulsion company. Current DARPA '
+        'contract involves a rocket they are not allowed to describe but '
+        'which employees call "the tube."',
   ),
   StockSeed(
-    ticker: 'CMTX',
-    companyName: 'Cometix Logistics',
+    ticker: 'VRMV',
+    companyName: 'VroomVroom Logistics',
     sector: 'Industrial',
     initialPrice: 69.45,
     description:
-        'Cometix operates an automated warehouse and last-mile delivery '
-        'network serving e-commerce clients across 30 metro areas.',
+        'Automated warehouse and delivery company. Fleet of 12,000 robots '
+        'that have collectively filed three HR complaints and established '
+        'a union subcommittee.',
   ),
   StockSeed(
-    ticker: 'ZNTH',
-    companyName: 'Zenith Manufacturing',
+    ticker: 'CRNK',
+    companyName: 'Crankmore Manufacturing',
     sector: 'Industrial',
     initialPrice: 101.80,
     description:
-        'Zenith produces precision machined components for aerospace, '
-        'defence, and heavy-equipment OEMs.',
+        'Precision machined components supplier whose factory smells of '
+        'ambition and cutting fluid. CEO communicates exclusively via '
+        'motivational fridge magnets.',
   ),
 
   // ── Entertainment (2 companies) ──────────────────────────────────────────
   StockSeed(
-    ticker: 'QDRN',
-    companyName: 'Quadron Media',
+    ticker: 'MEME',
+    companyName: 'MemeStream Studios',
     sector: 'Entertainment',
     initialPrice: 24.60,
     description:
-        'Quadron creates interactive narrative games and has a rapidly '
-        'growing subscription gaming platform with 8 million subscribers.',
+        'Creates interactive narrative games and hosts the MemeStream platform, '
+        'a streaming service for content that is '
+        '"technically not a movie but feels like one."',
   ),
   StockSeed(
-    ticker: 'BLVD',
-    companyName: 'Boulevard Streaming',
+    ticker: 'BLEH',
+    companyName: 'BLEH Streaming Inc',
     sector: 'Entertainment',
     initialPrice: 48.20,
     description:
-        'Boulevard is a streaming service focused on documentary and '
-        'independent film content, competing against major platforms.',
+        'Premium streaming service focused on content that viewers finish out '
+        'of spite. Most-watched show has a 2-star average and 900 million views.',
   ),
 ];

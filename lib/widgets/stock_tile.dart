@@ -52,7 +52,27 @@ class StockTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(stock.ticker, style: AppTheme.ticker),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(stock.ticker, style: AppTheme.ticker),
+                      if (stock.isInUptrend) ...[
+                        const SizedBox(width: 4),
+                        const Icon(
+                          Icons.trending_up,
+                          size: 14,
+                          color: AppTheme.positive,
+                        ),
+                      ] else if (stock.isInDowntrend) ...[
+                        const SizedBox(width: 4),
+                        const Icon(
+                          Icons.trending_down,
+                          size: 14,
+                          color: AppTheme.negative,
+                        ),
+                      ],
+                    ],
+                  ),
                   const SizedBox(height: 2),
                   Text(
                     stock.companyName,

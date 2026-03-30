@@ -278,6 +278,27 @@ class _PriceHeader extends StatelessWidget {
               ),
             ],
           ),
+          if (stock.isInUptrend || stock.isInDowntrend) ...[
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Icon(
+                  stock.isInUptrend ? Icons.trending_up : Icons.trending_down,
+                  size: 13,
+                  color: stock.isInUptrend ? AppTheme.positive : AppTheme.negative,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  '${stock.isInUptrend ? "UPTREND" : "DOWNTREND"} · ${stock.trendDaysRemaining}d remaining',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: stock.isInUptrend ? AppTheme.positive : AppTheme.negative,
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );

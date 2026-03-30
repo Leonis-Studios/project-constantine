@@ -14,12 +14,14 @@
 //       output (though amounts are random, bounds are deterministic).
 //
 // ALGORITHM OVERVIEW (each call to advanceOneDay):
-//   1. Apply baseline noise  → every stock drifts ±0.5% to ±1.5%
-//   2. Decide events         → pick 1–3 events; global events are 5% likely
-//   3. Apply event impacts   → sector or specific stock prices are adjusted
-//   4. Clamp prices          → nothing falls below $0.50
-//   5. Update price history  → append new price, cap list at 30 entries
-//   6. Return result         → new stock list + generated events
+//   0. Process trend state  → tick down active trends; randomly start new ones
+//   1. Apply baseline noise → every stock drifts; trending stocks always move
+//                             in their trend direction with an extra bias
+//   2. Decide events        → pick 1–3 events; global events are 5% likely
+//   3. Apply event impacts  → sector or specific stock prices are adjusted
+//   4. Clamp prices         → nothing falls below $0.50
+//   5. Update price history → append new price, cap list at 30 entries
+//   6. Return result        → new stock list + generated events
 // ─────────────────────────────────────────────────────────────────────────────
 
 import 'dart:math';
@@ -46,6 +48,16 @@ class SimulationResult {
   });
 }
 
+// ── _TrendUpdate ──────────────────────────────────────────────────────────────
+//
+// Lightweight holder for the updated trend state of one stock after Step 0.
+
+class _TrendUpdate {
+  final String direction;
+  final int daysRemaining;
+  const _TrendUpdate(this.direction, this.daysRemaining);
+}
+
 // ── SimulationEngine ──────────────────────────────────────────────────────────
 
 class SimulationEngine {
@@ -70,6 +82,17 @@ class SimulationEngine {
   static const double kBaseNoiseMin = 0.005; // 0.5%
   static const double kBaseNoiseMax = 0.015; // 1.5%
 
+  // Trend system constants.
+  // Probability a stock with no active trend starts one on any given day.
+  static const double kTrendStartProbability = 0.15;
+  // Trend duration range in days (inclusive).
+  static const int kTrendMinDays = 3;
+  static const int kTrendMaxDays = 10;
+  // Extra daily directional bias added on top of baseline noise while trending.
+  // An uptrend day moves +noise+bias; a downtrend day moves -noise-bias.
+  static const double kTrendBiasMin = 0.005; // 0.5%
+  static const double kTrendBiasMax = 0.020; // 2.0%
+
   /// The main entry point. Call this once per "Next Day" press.
   ///
   /// Parameters:
@@ -84,26 +107,72 @@ class SimulationEngine {
     required int dayNumber,
     required Random rng,
   }) {
+    // ── Step 0: Process trend state ───────────────────────────────────────
+    //
+    // For each stock:
+    //   • If already trending: tick daysRemaining down by 1. If it hits 0,
+    //     reset to neutral.
+    //   • If neutral: 15% chance to start a new 3–10 day trend (up or down).
+    //
+    // Results stored in a map so Step 1 can look up each stock's direction.
+
+    final Map<String, _TrendUpdate> updatedTrends = {};
+
+    for (final stock in currentStocks) {
+      if (stock.trendDirection != 'neutral') {
+        // Tick down the active trend.
+        final newDays = stock.trendDaysRemaining - 1;
+        if (newDays <= 0) {
+          updatedTrends[stock.ticker] = const _TrendUpdate('neutral', 0);
+        } else {
+          updatedTrends[stock.ticker] =
+              _TrendUpdate(stock.trendDirection, newDays);
+        }
+      } else {
+        // Neutral — roll for a new trend.
+        if (rng.nextDouble() < kTrendStartProbability) {
+          final direction = rng.nextBool() ? 'up' : 'down';
+          final duration =
+              kTrendMinDays + rng.nextInt(kTrendMaxDays - kTrendMinDays + 1);
+          updatedTrends[stock.ticker] = _TrendUpdate(direction, duration);
+        } else {
+          updatedTrends[stock.ticker] = const _TrendUpdate('neutral', 0);
+        }
+      }
+    }
+
     // ── Step 1: Apply baseline noise to every stock ────────────────────────
     //
-    // Even on quiet days with no events, prices move slightly. This simulates
-    // natural market micromovement (order flow, small trades, sentiment shifts).
-    // We build a mutable working map from ticker → price so event application
-    // in Step 3 is O(1) lookups.
+    // Trending stocks skip the coin-flip — their direction is forced by the
+    // trend. A bias on top of the base noise magnitude ensures trending days
+    // feel noticeably directional. Neutral stocks use the original coin-flip.
 
-    // Start with all current prices.
     final Map<String, double> workingPrices = {
       for (final s in currentStocks) s.ticker: s.currentPrice,
     };
 
-    // Apply noise to each stock independently.
     for (final stock in currentStocks) {
       const noiseRange = kBaseNoiseMax - kBaseNoiseMin;
-      // Noise magnitude: random value in [kBaseNoiseMin, kBaseNoiseMax]
       final noiseMagnitude = kBaseNoiseMin + rng.nextDouble() * noiseRange;
-      // Coin flip: noise goes up (+1) or down (-1)
-      final noiseDirection = rng.nextBool() ? 1.0 : -1.0;
-      final noiseMultiplier = 1.0 + (noiseMagnitude * noiseDirection);
+      final trend = updatedTrends[stock.ticker]!;
+
+      final double noiseMultiplier;
+      if (trend.direction == 'up') {
+        // Always positive: base noise + trend bias, no coin flip.
+        final bias =
+            kTrendBiasMin + rng.nextDouble() * (kTrendBiasMax - kTrendBiasMin);
+        noiseMultiplier = 1.0 + noiseMagnitude + bias;
+      } else if (trend.direction == 'down') {
+        // Always negative: subtract base noise + trend bias.
+        final bias =
+            kTrendBiasMin + rng.nextDouble() * (kTrendBiasMax - kTrendBiasMin);
+        noiseMultiplier = 1.0 - noiseMagnitude - bias;
+      } else {
+        // Neutral: original coin-flip logic.
+        final noiseDirection = rng.nextBool() ? 1.0 : -1.0;
+        noiseMultiplier = 1.0 + (noiseMagnitude * noiseDirection);
+      }
+
       workingPrices[stock.ticker] =
           (workingPrices[stock.ticker]! * noiseMultiplier);
     }
@@ -116,11 +185,9 @@ class SimulationEngine {
 
     final List<MarketEvent> generatedEvents = [];
 
-    // Roll for a global event first.
     final bool globalEventFires = rng.nextDouble() < kGlobalEventProbability;
 
     if (globalEventFires) {
-      // Pick one global event definition at random.
       final globalDefs =
           eventPool.where((e) => e.isGlobalEvent).toList();
 
@@ -136,25 +203,18 @@ class SimulationEngine {
         generatedEvents.add(event);
       }
     } else {
-      // Normal day: pick 1–3 non-global events.
       final int eventCount = kMinEventsPerDay +
           rng.nextInt(kMaxEventsPerDay - kMinEventsPerDay + 1);
 
-      // Shuffle a copy of non-global event definitions so we pick without
-      // replacement (avoids the same event firing twice in one day).
       final normalDefs =
           eventPool.where((e) => !e.isGlobalEvent).toList()..shuffle(rng);
 
-      // Keep track of tickers already targeted this day to avoid double-hitting
-      // the same stock with two separate events.
       final Set<String> usedTickers = {};
 
       for (int i = 0; i < eventCount && i < normalDefs.length; i++) {
         final def = normalDefs[i];
 
         if (def.targetSector != null) {
-          // ── Sector-wide event ────────────────────────────────────────────
-          // Apply the same impact to all stocks in the target sector.
           final event = _applySectorEvent(
             def: def,
             workingPrices: workingPrices,
@@ -164,8 +224,6 @@ class SimulationEngine {
           );
           generatedEvents.add(event);
         } else {
-          // ── Company-specific event ───────────────────────────────────────
-          // Pick a random stock that hasn't been hit today.
           final candidates = currentStocks
               .where((s) => !usedTickers.contains(s.ticker))
               .toList();
@@ -194,26 +252,28 @@ class SimulationEngine {
     //   • Clamp price to kMinPrice
     //   • Set previousPrice = old currentPrice (today becomes yesterday)
     //   • Append new price to history, drop oldest if over the cap
+    //   • Persist the updated trend state from Step 0
 
     final List<Stock> updatedStocks = currentStocks.map((stock) {
       final rawNewPrice = workingPrices[stock.ticker]!;
-      // Ensure the price never drops below the minimum.
       final newPrice = rawNewPrice.clamp(kMinPrice, double.infinity);
 
-      // Append today's price to history, keeping only the last kMaxHistoryLength.
       final newHistory = [
         ...stock.priceHistory,
         newPrice,
       ];
-      // If history exceeds cap, drop the oldest entry from the front.
       final trimmedHistory = newHistory.length > kMaxHistoryLength
           ? newHistory.sublist(newHistory.length - kMaxHistoryLength)
           : newHistory;
 
+      final trend = updatedTrends[stock.ticker]!;
+
       return stock.copyWith(
         currentPrice: newPrice,
-        previousPrice: stock.currentPrice, // yesterday = today's old price
+        previousPrice: stock.currentPrice,
         priceHistory: trimmedHistory,
+        trendDirection: trend.direction,
+        trendDaysRemaining: trend.daysRemaining,
       );
     }).toList();
 
@@ -236,15 +296,11 @@ class SimulationEngine {
     required int dayNumber,
     required Random rng,
   }) {
-    // Roll the impact magnitude (always within the definition's range).
     final double impactPercent = _rollImpact(def, rng);
 
     for (final stock in allStocks) {
       double actualImpact = impactPercent;
 
-      // Special case: the volatility event randomises sign per stock.
-      // This gives a realistic "mixed bag" day where some stocks rise and
-      // others fall on the same news.
       if (def.id == 'global_volatility') {
         final magnitude = impactPercent.abs();
         actualImpact = rng.nextBool() ? magnitude : -magnitude;
@@ -259,7 +315,7 @@ class SimulationEngine {
       dayNumber: dayNumber,
       headline: def.headlineTemplate.replaceAll('{company}', 'the market'),
       description: def.descriptionTemplate.replaceAll('{company}', 'the market'),
-      affectedTicker: null, // global — no single ticker
+      affectedTicker: null,
       affectedSector: null,
       impactPercent: impactPercent,
       isPositive: def.isPositive,
@@ -280,7 +336,6 @@ class SimulationEngine {
     final String sector = def.targetSector!;
     final multiplier = 1.0 + (impactPercent / 100.0);
 
-    // Apply to all stocks whose sector matches.
     for (final stock in allStocks.where((s) => s.sector == sector)) {
       workingPrices[stock.ticker] =
           (workingPrices[stock.ticker]! * multiplier);
@@ -290,7 +345,7 @@ class SimulationEngine {
       dayNumber: dayNumber,
       headline: def.headlineTemplate.replaceAll('{company}', sector),
       description: def.descriptionTemplate.replaceAll('{company}', sector),
-      affectedTicker: null, // sector event — no single ticker
+      affectedTicker: null,
       affectedSector: sector,
       impactPercent: impactPercent,
       isPositive: def.isPositive,
@@ -313,7 +368,6 @@ class SimulationEngine {
     workingPrices[targetStock.ticker] =
         (workingPrices[targetStock.ticker]! * multiplier);
 
-    // Substitute the real company name into the headline/description templates.
     final headline = def.headlineTemplate
         .replaceAll('{company}', targetStock.companyName);
     final description = def.descriptionTemplate
@@ -336,7 +390,6 @@ class SimulationEngine {
   /// For definitions where both min and max are negative, the result is negative.
   double _rollImpact(EventDefinition def, Random rng) {
     final range = def.maxImpactPercent - def.minImpactPercent;
-    // nextDouble() returns [0.0, 1.0), so result is in [min, max).
     return def.minImpactPercent + rng.nextDouble() * range;
   }
 }

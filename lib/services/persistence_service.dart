@@ -37,7 +37,7 @@ class PersistenceService {
   // ── Storage keys ────────────────────────────────────────────────────────────
   // Using constants avoids typos and makes key names easy to update.
 
-  static const String _kStocksKey = 'stocks_v1';
+  static const String _kStocksKey = 'stocks_v2';
   static const String _kCurrentDayKey = 'current_day_v1';
   static const String _kEventsKey = 'events_v1';
   static const String _kCashBalanceKey = 'cash_balance_v1';
@@ -167,6 +167,7 @@ class PersistenceService {
   /// PortfolioProvider.resetPortfolio() when the user starts a new game.
   Future<void> clearAll() async {
     await Future.wait([
+      _prefs.remove('stocks_v1'), // clean up old key if present
       _prefs.remove(_kStocksKey),
       _prefs.remove(_kCurrentDayKey),
       _prefs.remove(_kEventsKey),

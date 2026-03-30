@@ -12,15 +12,17 @@
 //     widget has data to draw a sparkline without needing a separate list.
 //   • toJson / fromJson enable persistence via shared_preferences (the
 //     PersistenceService serialises stocks to a JSON string).
+//   • trendDirection / trendDaysRemaining track multi-day price trends that
+//     bias daily noise in one direction. Managed by SimulationEngine.
 // ─────────────────────────────────────────────────────────────────────────────
 
 class Stock {
   // ── Identifying fields ──────────────────────────────────────────────────────
 
-  /// Short trading symbol, e.g. "NXCO". Always uppercase, 2–5 characters.
+  /// Short trading symbol, e.g. "YEET". Always uppercase, 2–5 characters.
   final String ticker;
 
-  /// Full company name shown in detail views, e.g. "Nexacor Industries".
+  /// Full company name shown in detail views, e.g. "YEET Corp".
   final String companyName;
 
   /// Industry sector — used to group companies and target sector-wide events.
@@ -48,6 +50,18 @@ class Stock {
   /// Used to draw the sparkline/line chart on the detail screen.
   final List<double> priceHistory;
 
+  // ── Trend fields ────────────────────────────────────────────────────────────
+
+  /// Current trend direction for this stock.
+  /// Valid values: 'up', 'down', 'neutral'
+  /// Set by SimulationEngine each day. Persisted across sessions.
+  final String trendDirection;
+
+  /// Number of days remaining in the current trend.
+  /// When this reaches 0, trendDirection resets to 'neutral'.
+  /// Ignored (meaningless) when trendDirection == 'neutral'.
+  final int trendDaysRemaining;
+
   // ── Constructor ─────────────────────────────────────────────────────────────
 
   const Stock({
@@ -58,6 +72,8 @@ class Stock {
     required this.currentPrice,
     required this.previousPrice,
     required this.priceHistory,
+    required this.trendDirection,
+    required this.trendDaysRemaining,
   });
 
   // ── Computed getters ────────────────────────────────────────────────────────
@@ -77,17 +93,16 @@ class Stock {
   /// True if the stock is up or flat compared to yesterday.
   bool get isPositive => currentPrice >= previousPrice;
 
+  /// True if this stock is currently in an active upward trend.
+  bool get isInUptrend => trendDirection == 'up' && trendDaysRemaining > 0;
+
+  /// True if this stock is currently in an active downward trend.
+  bool get isInDowntrend => trendDirection == 'down' && trendDaysRemaining > 0;
+
   // ── Immutable update ────────────────────────────────────────────────────────
 
   /// Returns a new Stock with selected fields replaced.
   /// All other fields are copied from `this` unchanged.
-  ///
-  /// Usage in SimulationEngine:
-  ///   final updated = stock.copyWith(
-  ///     currentPrice: newPrice,
-  ///     previousPrice: stock.currentPrice,  // today becomes yesterday
-  ///     priceHistory: [...stock.priceHistory, newPrice],
-  ///   );
   Stock copyWith({
     String? ticker,
     String? companyName,
@@ -96,6 +111,8 @@ class Stock {
     double? currentPrice,
     double? previousPrice,
     List<double>? priceHistory,
+    String? trendDirection,
+    int? trendDaysRemaining,
   }) {
     return Stock(
       ticker: ticker ?? this.ticker,
@@ -105,6 +122,8 @@ class Stock {
       currentPrice: currentPrice ?? this.currentPrice,
       previousPrice: previousPrice ?? this.previousPrice,
       priceHistory: priceHistory ?? this.priceHistory,
+      trendDirection: trendDirection ?? this.trendDirection,
+      trendDaysRemaining: trendDaysRemaining ?? this.trendDaysRemaining,
     );
   }
 
@@ -120,8 +139,9 @@ class Stock {
       'description': description,
       'currentPrice': currentPrice,
       'previousPrice': previousPrice,
-      // priceHistory is a List<double>, which JSON encodes natively.
       'priceHistory': priceHistory,
+      'trendDirection': trendDirection,
+      'trendDaysRemaining': trendDaysRemaining,
     };
   }
 
@@ -135,14 +155,15 @@ class Stock {
       description: json['description'] as String,
       currentPrice: (json['currentPrice'] as num).toDouble(),
       previousPrice: (json['previousPrice'] as num).toDouble(),
-      // JSON decodes arrays as List<dynamic>, so we cast each element to double.
       priceHistory: (json['priceHistory'] as List<dynamic>)
           .map((e) => (e as num).toDouble())
           .toList(),
+      trendDirection: (json['trendDirection'] as String?) ?? 'neutral',
+      trendDaysRemaining: (json['trendDaysRemaining'] as int?) ?? 0,
     );
   }
 
   @override
   String toString() =>
-      'Stock($ticker @ \$$currentPrice, ${changePercent.toStringAsFixed(2)}%)';
+      'Stock($ticker @ \$$currentPrice, ${changePercent.toStringAsFixed(2)}%, trend: $trendDirection)';
 }

@@ -30,70 +30,71 @@ const List<EventDefinition> kAllEventDefinitions = [
 
   EventDefinition(
     id: 'pos_earnings_beat',
-    headlineTemplate: '{company} smashes analyst earnings estimates',
+    headlineTemplate: '{company} accidentally discovers money behind the couch cushions',
     descriptionTemplate:
-        '{company} reported quarterly revenue 18% above consensus forecasts, '
-        'citing strong demand and disciplined cost management. The CFO raised '
-        'full-year guidance.',
+        '{company} reported quarterly earnings 18% above expectations after '
+        'the CFO found an uncashed cheque in a desk drawer. '
+        'Guidance raised. Desk drawer to be framed.',
     minImpactPercent: 5.0,
     maxImpactPercent: 14.0,
   ),
   EventDefinition(
     id: 'pos_partnership',
-    headlineTemplate: '{company} announces landmark government partnership',
+    headlineTemplate: '{company} signs landmark deal with a wizard',
     descriptionTemplate:
-        '{company} signed a multi-year contract worth an estimated \$2.1B '
-        'with a federal agency, securing a major revenue stream through 2029.',
+        'A licensed wizard endorsed {company}\'s blockchain project in a '
+        'notarised letter sealed with glitter wax. Analysts call it '
+        '"unverifiable but very bullish."',
     minImpactPercent: 6.0,
     maxImpactPercent: 16.0,
   ),
   EventDefinition(
     id: 'pos_product_launch',
-    headlineTemplate: '{company} launches flagship product to rave reviews',
+    headlineTemplate: '{company} launches product — customers moderately not confused',
     descriptionTemplate:
-        'Early adoption of {company}\'s latest product exceeded internal '
-        'projections by 40%, with pre-orders sold out within 48 hours of '
-        'the announcement.',
+        '{company}\'s latest release shipped on time and worked on the first try. '
+        'Internal Slack was briefly silent with stunned respect. '
+        'Pre-orders exceeded projections by 40%.',
     minImpactPercent: 4.0,
     maxImpactPercent: 12.0,
   ),
   EventDefinition(
     id: 'pos_regulatory_approval',
-    headlineTemplate: '{company} wins key regulatory approval',
+    headlineTemplate: 'Government approves {company} despite not fully reading the application',
     descriptionTemplate:
-        'Regulators granted {company} a long-awaited approval, clearing the '
-        'path for the company to enter three new markets previously blocked '
-        'by compliance requirements.',
+        'Regulators granted {company} approval after a committee member '
+        'skimmed the executive summary and decided it "sounded fine." '
+        'Three new markets now open for business.',
     minImpactPercent: 7.0,
     maxImpactPercent: 18.0,
   ),
   EventDefinition(
     id: 'pos_buyback',
-    headlineTemplate: '{company} authorises \$500M share buyback program',
+    headlineTemplate: '{company} announces share buyback funded by "found money"',
     descriptionTemplate:
-        'The board of directors at {company} approved a \$500 million share '
-        'repurchase program, signalling management\'s confidence in the '
-        'company\'s long-term value.',
+        'The {company} board approved a \$500M repurchase plan funded by '
+        'what the CFO described in the earnings call as "various jars '
+        'and at least one shoebox." Investors inexplicably reassured.',
     minImpactPercent: 3.0,
     maxImpactPercent: 8.0,
   ),
   EventDefinition(
     id: 'pos_analyst_upgrade',
-    headlineTemplate: 'Major bank upgrades {company} to Strong Buy',
+    headlineTemplate: 'Analyst upgrades {company} after reading their Wikipedia page',
     descriptionTemplate:
-        'Analysts at Veltman & Co. upgraded {company} from Hold to Strong Buy, '
-        'raising their price target by 35% citing undervalued assets and '
-        'improving margin outlook.',
+        'A sell-side analyst upgraded {company} to Strong Buy, citing '
+        'the company\'s "excellent logo" and a hunch described as '
+        '"professionally developed intuition." Price target raised 35%.',
     minImpactPercent: 4.0,
     maxImpactPercent: 10.0,
   ),
   EventDefinition(
     id: 'pos_acquisition',
-    headlineTemplate: '{company} acquires hot startup for strategic expansion',
+    headlineTemplate: '{company} acquires startup for three goats and a firm handshake',
     descriptionTemplate:
-        '{company} announced the acquisition of a fast-growing private startup '
-        'for \$340M in cash. Analysts praised the deal as complementary to '
-        '{company}\'s core business roadmap.',
+        '{company} completed the acquisition of a private startup for an '
+        'undisclosed sum that sources describe as "less than you\'d think." '
+        'Both CEOs described the deal as "very real and definitely happening."',
     minImpactPercent: 3.0,
     maxImpactPercent: 9.0,
   ),
@@ -102,71 +103,71 @@ const List<EventDefinition> kAllEventDefinitions = [
 
   EventDefinition(
     id: 'neg_earnings_miss',
-    headlineTemplate: '{company} misses earnings — revenue down 14%',
+    headlineTemplate: '{company} misses earnings after CFO confused "revenue" with "vibes"',
     descriptionTemplate:
-        '{company} reported quarterly earnings well below expectations. '
-        'Revenue fell 14% year-over-year as the company struggled with '
-        'supply chain disruptions and softening demand.',
+        '{company} reported earnings well below expectations. The CFO cited '
+        '"a fundamental misunderstanding of what numbers mean" and will be '
+        'retrained on a spreadsheet course starting Monday.',
     minImpactPercent: -14.0,
     maxImpactPercent: -4.0,
   ),
   EventDefinition(
     id: 'neg_lawsuit',
-    headlineTemplate: '{company} faces class-action lawsuit over data breach',
+    headlineTemplate: '{company} sued by a guy who seems really sure about this',
     descriptionTemplate:
-        'A class of over 200,000 plaintiffs filed suit against {company}, '
-        'alleging negligent handling of customer data following a major '
-        'security incident disclosed last quarter.',
+        'A class of 200,000 plaintiffs filed suit against {company} alleging '
+        'the company\'s product made their Wi-Fi "feel weird." '
+        'Legal fees expected to exceed the original product price.',
     minImpactPercent: -12.0,
     maxImpactPercent: -4.0,
   ),
   EventDefinition(
     id: 'neg_ceo_resign',
-    headlineTemplate: '{company} CEO resigns amid internal investigation',
+    headlineTemplate: '{company} CEO resigns to pursue career as a competitive eater',
     descriptionTemplate:
-        'The CEO of {company} stepped down effective immediately. The board '
-        'appointed an interim executive while an independent committee '
-        'investigates alleged financial irregularities.',
+        'The CEO of {company} stepped down effective immediately. A farewell '
+        'memo cited "a passion for hot dogs and freedom." '
+        'The board is reviewing candidates who have not mentioned hot dogs.',
     minImpactPercent: -18.0,
     maxImpactPercent: -8.0,
   ),
   EventDefinition(
     id: 'neg_recall',
-    headlineTemplate: '{company} issues major product recall',
+    headlineTemplate: '{company} recalls flagship product after discovering it does the opposite of what it says',
     descriptionTemplate:
-        '{company} announced a voluntary recall of its flagship product '
-        'affecting an estimated 1.8 million units due to a safety defect. '
-        'Remediation costs are expected to exceed \$120M.',
+        '{company} initiated a recall of 1.8 million units. The safety defect '
+        'was described in the filing as "directionally incorrect functionality." '
+        'Remediation costs are expected to be considerable.',
     minImpactPercent: -15.0,
     maxImpactPercent: -6.0,
   ),
   EventDefinition(
     id: 'neg_contract_loss',
-    headlineTemplate: '{company} loses key contract to rival',
+    headlineTemplate: '{company} loses contract to competitor who showed up in a nicer van',
     descriptionTemplate:
-        'A government agency announced it will not renew its contract with '
-        '{company}, awarding the deal to a competitor. The lost contract '
-        'represented 12% of annual revenue.',
+        'A government agency awarded a major contract to a rival after '
+        '{company}\'s proposal was described as "grammatically brave." '
+        'The lost revenue represented 12% of annual income.',
     minImpactPercent: -11.0,
     maxImpactPercent: -5.0,
   ),
   EventDefinition(
     id: 'neg_analyst_downgrade',
-    headlineTemplate: '{company} downgraded to Sell on margin concerns',
+    headlineTemplate: 'Analyst downgrades {company} after personally being annoyed by their app',
     descriptionTemplate:
-        'Brokerage firm Harwick Capital downgraded {company} to Sell, '
-        'warning that rising input costs and competitive pressure will '
-        'compress margins over the next two quarters.',
+        'A brokerage downgraded {company} to Sell after an analyst experienced '
+        'three loading spinners in one session and "simply could not let it go." '
+        'Margin concerns also cited.',
     minImpactPercent: -9.0,
     maxImpactPercent: -3.0,
   ),
   EventDefinition(
     id: 'neg_guidance_cut',
-    headlineTemplate: '{company} cuts full-year revenue guidance',
+    headlineTemplate: '{company} cuts guidance after COO accidentally tweets internal memo',
     descriptionTemplate:
-        '{company}\'s management issued a profit warning, reducing full-year '
-        'revenue guidance by 8%, blaming macroeconomic headwinds and slower '
-        'than expected customer adoption.',
+        '{company} reduced full-year revenue guidance by 8% following what '
+        'the company calls "a digital communication incident" and what '
+        'Twitter calls "extremely funny."',
     minImpactPercent: -10.0,
     maxImpactPercent: -4.0,
   ),
@@ -176,54 +177,55 @@ const List<EventDefinition> kAllEventDefinitions = [
 
   EventDefinition(
     id: 'sector_pos_tech',
-    headlineTemplate: 'Technology sector surges on AI breakthrough announcement',
+    headlineTemplate: 'Technology sector surges after someone claims AI can now smell money',
     descriptionTemplate:
-        'A major research consortium published results of a breakthrough in '
-        'large-language model efficiency, boosting investor confidence across '
-        'the entire technology sector.',
+        'A research paper claiming AI can detect financial opportunity via '
+        '"olfactory market signal modelling" sent technology stocks soaring. '
+        'Peer review has been requested and not yet performed.',
     minImpactPercent: 2.0,
     maxImpactPercent: 7.0,
     targetSector: 'Technology',
   ),
   EventDefinition(
     id: 'sector_pos_energy',
-    headlineTemplate: 'Global energy prices spike on supply disruption fears',
+    headlineTemplate: 'Energy stocks boom as someone unplugs a very important freezer',
     descriptionTemplate:
-        'Geopolitical tensions in a major oil-producing region sent energy '
-        'commodity prices sharply higher, benefiting all listed energy firms.',
+        'A supply shock in global energy markets was traced to a freezer '
+        'malfunction at a key distribution node. Analysts say the incident '
+        'was "preventable but extremely profitable for investors."',
     minImpactPercent: 3.0,
     maxImpactPercent: 9.0,
     targetSector: 'Energy',
   ),
   EventDefinition(
     id: 'sector_pos_healthcare',
-    headlineTemplate: 'Healthcare reform bill boosts pharma outlook',
+    headlineTemplate: 'Healthcare stocks rally after government discovers people are still sick',
     descriptionTemplate:
-        'A landmark healthcare bill passed, expanding reimbursement '
-        'coverage for a broad range of treatments and bolstering revenue '
-        'prospects for healthcare companies.',
+        'A landmark spending bill expanded coverage for "conditions that are '
+        'definitely real and not just vibes," boosting revenue projections '
+        'for all listed healthcare companies.',
     minImpactPercent: 2.0,
     maxImpactPercent: 6.0,
     targetSector: 'Healthcare',
   ),
   EventDefinition(
     id: 'sector_pos_consumer',
-    headlineTemplate: 'Consumer confidence index hits 5-year high',
+    headlineTemplate: 'Consumer sector surges: people still buying things, experts confirm',
     descriptionTemplate:
-        'The monthly consumer sentiment survey reached its highest reading '
-        'since 2019, driving optimism that household spending will accelerate '
-        'through the holiday season.',
+        'A consumer confidence survey hit its highest reading since someone '
+        'last felt good about things, driving optimism that people will '
+        'continue to exchange money for objects they want.',
     minImpactPercent: 1.5,
     maxImpactPercent: 5.0,
     targetSector: 'Consumer',
   ),
   EventDefinition(
     id: 'sector_pos_industrial',
-    headlineTemplate: 'Infrastructure spending bill unlocks billions for industry',
+    headlineTemplate: 'Industrial sector benefits as government builds a very large thing',
     descriptionTemplate:
-        'A new federal infrastructure bill allocates \$400B over five years '
-        'to domestic manufacturing, logistics, and aerospace, directly '
-        'benefiting industrial sector companies.',
+        'A federal infrastructure bill allocated \$400B to domestic '
+        'manufacturing after a senator reportedly said "let\'s build something '
+        'big" and nobody disagreed fast enough.',
     minImpactPercent: 2.5,
     maxImpactPercent: 7.0,
     targetSector: 'Industrial',
@@ -233,55 +235,55 @@ const List<EventDefinition> kAllEventDefinitions = [
 
   EventDefinition(
     id: 'sector_neg_finance',
-    headlineTemplate: 'Central bank raises interest rates — banks under pressure',
+    headlineTemplate: 'Finance sector rattled as central bank raises rates to "make money more expensive, somehow"',
     descriptionTemplate:
-        'The Federal Reserve raised its benchmark rate by 50 basis points, '
-        'tightening financial conditions and raising concerns about loan '
-        'default rates across the banking sector.',
+        'The Federal Reserve raised its benchmark rate by 50 basis points and '
+        'issued a statement that economists described as "technically a sentence." '
+        'Banking stocks fell on margin pressure fears.',
     minImpactPercent: -7.0,
     maxImpactPercent: -2.0,
     targetSector: 'Finance',
   ),
   EventDefinition(
     id: 'sector_neg_tech',
-    headlineTemplate: 'Antitrust crackdown targets major tech firms',
+    headlineTemplate: 'Tech sector slumps after regulator learns what an algorithm is',
     descriptionTemplate:
-        'Regulators announced investigations into anti-competitive practices '
-        'across the technology industry, creating legal overhang and '
-        'dampening investor sentiment sector-wide.',
+        'Regulators launched investigations into tech companies after a '
+        'committee member Googled "what is software" and became alarmed. '
+        'Sentiment darkened across the sector pending a follow-up Google.',
     minImpactPercent: -6.0,
     maxImpactPercent: -2.0,
     targetSector: 'Technology',
   ),
   EventDefinition(
     id: 'sector_neg_energy',
-    headlineTemplate: 'Carbon tax legislation threatens energy sector margins',
+    headlineTemplate: 'Energy sector hit after government proposes "the sun should be free"',
     descriptionTemplate:
-        'Proposed carbon pricing legislation would significantly increase '
-        'operating costs for fossil fuel companies, weighing on near-term '
-        'earnings expectations.',
+        'Proposed energy legislation that one analyst described as "based on '
+        'vibes and spite" would significantly raise operating costs. '
+        'Solar companies are most confused.',
     minImpactPercent: -8.0,
     maxImpactPercent: -3.0,
     targetSector: 'Energy',
   ),
   EventDefinition(
     id: 'sector_neg_consumer',
-    headlineTemplate: 'Retail spending contracts amid rising inflation',
+    headlineTemplate: 'Consumer sector slumps as people remember they can just not buy things',
     descriptionTemplate:
-        'Consumer spending data for the month came in well below forecasts, '
-        'with households cutting back on discretionary purchases due to '
-        'sustained inflation in essentials.',
+        'Consumer spending came in well below forecasts after a widely shared '
+        'social media post reminded people that saving money is also an option. '
+        'Discretionary stocks fell sharply.',
     minImpactPercent: -5.0,
     maxImpactPercent: -2.0,
     targetSector: 'Consumer',
   ),
   EventDefinition(
     id: 'sector_neg_entertainment',
-    headlineTemplate: 'Streaming wars intensify — entertainment stocks pressured',
+    headlineTemplate: 'Streaming sector tanks as viewers discover skill issues with their remote',
     descriptionTemplate:
-        'Subscriber growth data revealed broad-based deceleration across '
-        'streaming platforms, sparking fears of an industry saturation point '
-        'and a wave of price competition.',
+        'Subscriber growth decelerated across all platforms after a study '
+        'found 40% of cancellations stem from users being unable to find '
+        'anything good and blaming the service personally.',
     minImpactPercent: -7.0,
     maxImpactPercent: -2.5,
     targetSector: 'Entertainment',
@@ -293,36 +295,36 @@ const List<EventDefinition> kAllEventDefinitions = [
 
   EventDefinition(
     id: 'global_crash',
-    headlineTemplate:
-        'GLOBAL SELLOFF: Geopolitical crisis triggers market-wide panic',
+    headlineTemplate: 'GLOBAL SELLOFF: Someone accidentally unplugged the internet',
     descriptionTemplate:
-        'Escalating tensions between major powers sparked a broad risk-off '
-        'selloff. Every sector is in the red as investors flee to safety. '
-        'Circuit breakers were triggered on several exchanges.',
+        'A facility manager in an undisclosed location tripped over a power '
+        'cable and caused cascading failures across global markets. '
+        'The individual has been described as "sheepish but uninjured." '
+        'All sectors in the red. Circuit breakers triggered.',
     minImpactPercent: -14.0,
     maxImpactPercent: -8.0,
     isGlobalEvent: true,
   ),
   EventDefinition(
     id: 'global_rally',
-    headlineTemplate:
-        'MARKET RALLY: Central banks announce coordinated stimulus package',
+    headlineTemplate: 'MARKET RALLY: Guy on television seems really confident about everything',
     descriptionTemplate:
-        'G7 central banks announced a coordinated quantitative easing program '
-        'injecting \$1.2T into global markets. Risk assets surged across '
-        'all sectors as liquidity conditions improved dramatically.',
+        'A charismatic financial commentator appeared on three channels '
+        'simultaneously and said "this is fine, actually" with such conviction '
+        'that G7 central banks issued a coordinated stimulus package. '
+        'Risk assets surged across all sectors.',
     minImpactPercent: 5.0,
     maxImpactPercent: 10.0,
     isGlobalEvent: true,
   ),
   EventDefinition(
     id: 'global_volatility',
-    headlineTemplate:
-        'VOLATILITY SPIKE: Inflation data shocks economists',
+    headlineTemplate: 'VOLATILITY SPIKE: Economists disagree on whether numbers go up or down',
     descriptionTemplate:
-        'Unexpectedly high inflation figures sent markets into disarray. '
-        'Some stocks rose on pricing power optimism while others fell '
-        'sharply on margin compression fears. Direction varies by sector.',
+        'An unusually public disagreement between two macroeconomists about '
+        'the direction of literally everything sent markets into disarray. '
+        'Some stocks rose, others fell, most just sat there looking confused. '
+        'Direction varies wildly.',
     // For global_volatility, SimulationEngine applies a random sign per stock
     // rather than the same direction to all. The range is intentionally wide.
     minImpactPercent: -6.0,
