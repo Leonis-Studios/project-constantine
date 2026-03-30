@@ -22,16 +22,16 @@ class AppTheme {
   // ── Core palette ────────────────────────────────────────────────────────────
 
   // The deepest background — used for Scaffold backgrounds.
-  static const Color background = Color(0xFF0D1117);
+  static const Color background = Color(0xFF2D3840);
 
   // Slightly lighter surface — used for cards, tiles, and bottom sheets.
-  static const Color surface = Color(0xFF161B22);
+  static const Color surface = Color(0xFF435058);
 
   // Borders, dividers, and muted outlines.
-  static const Color border = Color(0xFF30363D);
+  static const Color border = Color(0xFF848C8E);
 
   // Primary interactive accent — buttons, active tab indicators.
-  static const Color accent = Color(0xFF58A6FF);
+  static const Color accent = Color(0xFFDCF763);
 
   // ── Semantic price colors ────────────────────────────────────────────────────
 
@@ -42,21 +42,21 @@ class AppTheme {
   static const Color negative = Color(0xFFF85149);
 
   // Soft green for backgrounds (e.g., positive badge fill).
-  static const Color positiveFaint = Color(0xFF1A2F1A);
+  static const Color positiveFaint = Color(0xFF2A3A2A);
 
   // Soft red for backgrounds (e.g., negative badge fill).
-  static const Color negativeFaint = Color(0xFF2F1A1A);
+  static const Color negativeFaint = Color(0xFF3A2A2A);
 
   // ── Text colors ─────────────────────────────────────────────────────────────
 
   // Main readable text — headlines, prices, tickers.
-  static const Color textPrimary = Color(0xFFE6EDF3);
+  static const Color textPrimary = Color(0xFFF1F2EE);
 
   // Supporting text — descriptions, secondary labels.
-  static const Color textSecondary = Color(0xFF8B949E);
+  static const Color textSecondary = Color(0xFFBFB7B6);
 
   // Muted/disabled text — timestamps, placeholders.
-  static const Color textMuted = Color(0xFF484F58);
+  static const Color textMuted = Color(0xFF848C8E);
 
   // ── Shape ───────────────────────────────────────────────────────────────────
 
@@ -173,7 +173,7 @@ class AppTheme {
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: accent,
-          foregroundColor: background,
+          foregroundColor: const Color(0xFF2D3840),
           textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(badgeRadius),

@@ -25,6 +25,8 @@ import '../providers/market_provider.dart';
 import '../providers/portfolio_provider.dart';
 import '../providers/xp_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/daily_summary_sheet.dart';
+import '../widgets/insider_tip_banner.dart';
 import '../widgets/insider_tip_dialog.dart';
 import 'market_overview_screen.dart';
 import 'portfolio_screen.dart';
@@ -75,12 +77,15 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   /// Advances the day then fires all notifications: unlocks, XP, achievements,
-  /// level-ups, and any generated insider tip.
+  /// level-ups, insider tip banner, and the daily summary sheet.
   Future<void> _advanceDayAndNotify(BuildContext context) async {
     final market = context.read<MarketProvider>();
     final portfolio = context.read<PortfolioProvider>();
     final xp = context.read<XPProvider>();
 
+    // Capture state BEFORE advancing so the summary can show before/after.
+    final double valueBefore = portfolio.totalPortfolioValue(market.stocks);
+    final int dayBefore = market.currentDay;
     final levelBefore = xp.currentLevel.level;
 
     await market.advanceDay();
@@ -123,9 +128,21 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    // Insider tip dialog.
+    // Insider tip — non-blocking bottom-right banner.
     if (dayResult.newTip != null && context.mounted) {
-      _showInsiderTipDialog(context, dayResult.newTip!);
+      _showInsiderTipBanner(context, dayResult.newTip!);
+    }
+
+    // Daily summary sheet — always shown after every day advance.
+    if (context.mounted) {
+      _showDailySummary(
+        context,
+        dayNumber: market.currentDay,
+        valueBefore: valueBefore,
+        dayBefore: dayBefore,
+        portfolio: portfolio,
+        market: market,
+      );
     }
   }
 
@@ -150,8 +167,25 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  /// Shows the insider tip modal dialog.
-  void _showInsiderTipDialog(BuildContext context, InsiderTip tip) {
+  /// Shows the non-blocking bottom-right banner for an insider tip.
+  void _showInsiderTipBanner(BuildContext context, InsiderTip tip) {
+    late OverlayEntry entry;
+    entry = InsiderTipBanner.show(
+      context,
+      tip,
+      onView: () {
+        entry.remove();
+        if (context.mounted) _showInsiderTipDialogFull(context, tip);
+      },
+      onIgnore: () {
+        entry.remove();
+        if (context.mounted) context.read<XPProvider>().dismissTip(tip.id);
+      },
+    );
+  }
+
+  /// Shows the full insider tip dialog (opened from the banner's "View →" button).
+  void _showInsiderTipDialogFull(BuildContext context, InsiderTip tip) {
     showDialog<void>(
       context: context,
       barrierDismissible: false,
@@ -161,6 +195,32 @@ class _HomeScreenState extends State<HomeScreen> {
           context.read<XPProvider>().dismissTip(tip.id);
           Navigator.of(context).pop();
         },
+      ),
+    );
+  }
+
+  /// Shows the end-of-day summary as a modal bottom sheet.
+  void _showDailySummary(
+    BuildContext context, {
+    required int dayNumber,
+    required double valueBefore,
+    required int dayBefore,
+    required PortfolioProvider portfolio,
+    required MarketProvider market,
+  }) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => DailySummarySheet(
+        dayNumber: dayNumber,
+        portfolioValueBefore: valueBefore,
+        portfolioValueAfter: portfolio.totalPortfolioValue(market.stocks),
+        stocks: market.stocks,
+        portfolio: portfolio,
+        todayEvents: market.events
+            .where((e) => e.dayNumber == dayNumber)
+            .toList(),
       ),
     );
   }
