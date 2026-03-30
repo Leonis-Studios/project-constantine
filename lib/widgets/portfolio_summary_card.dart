@@ -38,11 +38,15 @@ class PortfolioSummaryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final currencyFormat = NumberFormat.currency(symbol: '\$');
 
-    // Compute the four summary values.
+    // Compute the summary values.
     final double totalValue = portfolio.totalPortfolioValue(stocks);
     final double unrealisedPnl = portfolio.totalUnrealizedPnl(stocks);
     final double cash = portfolio.cashBalance;
-    final double invested = portfolio.totalInvested();
+    // Realised P&L = total return minus what is still unrealised.
+    // totalPortfolioValue = startingCash + realisedGains + unrealisedGains
+    // => realisedGains = totalPortfolioValue - startingCash - unrealisedGains
+    final double realisedPnl =
+        totalValue - PortfolioProvider.kStartingCash - unrealisedPnl;
 
     return Card(
       margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
@@ -53,7 +57,7 @@ class PortfolioSummaryCard extends StatelessWidget {
           children: [
             const Text('Portfolio Summary', style: AppTheme.label),
             const SizedBox(height: 12),
-            // 2×2 grid of stat cells.
+            // Row 1: Total Value | Buying Power
             Row(
               children: [
                 Expanded(
@@ -64,6 +68,18 @@ class PortfolioSummaryCard extends StatelessWidget {
                 ),
                 Expanded(
                   child: _StatCell(
+                    label: 'Buying Power',
+                    value: currencyFormat.format(cash),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            // Row 2: Unrealised P&L | Realised P&L
+            Row(
+              children: [
+                Expanded(
+                  child: _StatCell(
                     label: 'Unrealised P&L',
                     value:
                         '${unrealisedPnl >= 0 ? '+' : ''}${currencyFormat.format(unrealisedPnl)}',
@@ -72,21 +88,14 @@ class PortfolioSummaryCard extends StatelessWidget {
                         : AppTheme.negative,
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
                 Expanded(
                   child: _StatCell(
-                    label: 'Cash Available',
-                    value: currencyFormat.format(cash),
-                  ),
-                ),
-                Expanded(
-                  child: _StatCell(
-                    label: 'Amount Invested',
-                    value: currencyFormat.format(invested.clamp(0, double.infinity)),
+                    label: 'Realised P&L',
+                    value:
+                        '${realisedPnl >= 0 ? '+' : ''}${currencyFormat.format(realisedPnl)}',
+                    valueColor: realisedPnl >= 0
+                        ? AppTheme.positive
+                        : AppTheme.negative,
                   ),
                 ),
               ],

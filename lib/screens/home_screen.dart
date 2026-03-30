@@ -19,12 +19,17 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../data/achievement_definitions.dart';
+import '../models/insider_tip.dart';
 import '../providers/market_provider.dart';
 import '../providers/portfolio_provider.dart';
+import '../providers/xp_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/insider_tip_dialog.dart';
 import 'market_overview_screen.dart';
 import 'portfolio_screen.dart';
 import 'events_log_screen.dart';
+import 'profile_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -37,12 +42,12 @@ class _HomeScreenState extends State<HomeScreen> {
   // Tracks which tab is currently shown (0 = Market, 1 = Portfolio, 2 = Events).
   int _selectedIndex = 0;
 
-  // The three main screens — built once and kept alive as the user switches tabs.
-  // Using a list here so we can index by _selectedIndex.
+  // The four main screens — built once and kept alive as the user switches tabs.
   static const List<Widget> _screens = [
     MarketOverviewScreen(),
     PortfolioScreen(),
     EventsLogScreen(),
+    ProfileScreen(),
   ];
 
   @override
@@ -52,14 +57,112 @@ class _HomeScreenState extends State<HomeScreen> {
     // We use addPostFrameCallback so the providers are fully wired into the
     // widget tree before we call methods on them.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<MarketProvider>().initialize();
-      context.read<PortfolioProvider>().initialize();
+      final market = context.read<MarketProvider>();
+      final portfolio = context.read<PortfolioProvider>();
+      final xp = context.read<XPProvider>();
+      market.initialize();
+      portfolio.initialize();
+      xp.initialize();
+      // Wire the portfolio so advanceDay() can trigger unlock checks
+      // when prices move without any player trade.
+      market.attachPortfolio(portfolio);
     });
   }
 
   // Handles bottom nav bar taps.
   void _onTabTapped(int index) {
     setState(() => _selectedIndex = index);
+  }
+
+  /// Advances the day then fires all notifications: unlocks, XP, achievements,
+  /// level-ups, and any generated insider tip.
+  Future<void> _advanceDayAndNotify(BuildContext context) async {
+    final market = context.read<MarketProvider>();
+    final portfolio = context.read<PortfolioProvider>();
+    final xp = context.read<XPProvider>();
+
+    final levelBefore = xp.currentLevel.level;
+
+    await market.advanceDay();
+    if (!context.mounted) return;
+
+    // Stock unlock snackbars + XP.
+    for (final ticker in market.recentlyUnlocked) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('🔓 $ticker is now unlocked! You can now invest in it.'),
+          backgroundColor: AppTheme.accent,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+      final unlockResult = xp.onStockUnlocked(ticker);
+      if (!context.mounted) return;
+      _showAchievementSnackbars(context, unlockResult.newAchievements, xp);
+    }
+
+    // Day advance XP + achievements + tip.
+    final dayResult = xp.onDayAdvanced(
+      day: market.currentDay,
+      stocks: market.stocks,
+      portfolio: portfolio,
+    );
+    if (!context.mounted) return;
+
+    _showAchievementSnackbars(context, dayResult.newAchievements, xp);
+
+    // Level-up notification.
+    if (xp.currentLevel.level > levelBefore) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '🏆 Level up! You are now a ${xp.currentLevel.title}.',
+          ),
+          backgroundColor: const Color(0xFFE3B341), // amber
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    }
+
+    // Insider tip dialog.
+    if (dayResult.newTip != null && context.mounted) {
+      _showInsiderTipDialog(context, dayResult.newTip!);
+    }
+  }
+
+  /// Shows a snackbar for each newly unlocked achievement.
+  void _showAchievementSnackbars(
+      BuildContext context, List<String> ids, XPProvider xp) {
+    if (!context.mounted) return;
+    for (final id in ids) {
+      final def = kAchievements.firstWhere(
+        (a) => a.id == id,
+        orElse: () => const AchievementDef(
+            id: '', name: '', emoji: '', description: '', xpReward: 0),
+      );
+      if (def.id.isEmpty) continue;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${def.emoji} Achievement unlocked: ${def.name}'),
+          backgroundColor: AppTheme.surface,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+
+  /// Shows the insider tip modal dialog.
+  void _showInsiderTipDialog(BuildContext context, InsiderTip tip) {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => InsiderTipDialog(
+        tip: tip,
+        onDismiss: () {
+          context.read<XPProvider>().dismissTip(tip.id);
+          Navigator.of(context).pop();
+        },
+      ),
+    );
   }
 
   @override
@@ -100,7 +203,7 @@ class _HomeScreenState extends State<HomeScreen> {
               child: ElevatedButton.icon(
                 icon: const Icon(Icons.skip_next, size: 18),
                 label: const Text('Next Day'),
-                onPressed: () => context.read<MarketProvider>().advanceDay(),
+                onPressed: () => _advanceDayAndNotify(context),
               ),
             ),
         ],
@@ -138,6 +241,10 @@ class _HomeScreenState extends State<HomeScreen> {
           BottomNavigationBarItem(
             icon: Icon(Icons.feed_outlined),
             label: 'Events',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline),
+            label: 'Profile',
           ),
         ],
       ),

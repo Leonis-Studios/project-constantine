@@ -17,10 +17,13 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../data/stock_definitions.dart';
 import '../models/stock.dart';
 import '../providers/market_provider.dart';
+import '../providers/portfolio_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/stock_tile.dart';
 import 'stock_detail_screen.dart';
@@ -64,8 +67,9 @@ class _MarketOverviewScreenState extends State<MarketOverviewScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Watch the market provider — rebuilds whenever stock prices update.
+    // Watch both providers — rebuilds on price updates and unlock changes.
     final market = context.watch<MarketProvider>();
+    final portfolio = context.watch<PortfolioProvider>();
     final sorted = _sorted(market.stocks);
 
     // Compute a quick market summary: net % change across all stocks.
@@ -77,11 +81,12 @@ class _MarketOverviewScreenState extends State<MarketOverviewScreen> {
                 .reduce((a, b) => a + b) /
             market.stocks.length;
     final bool marketPositive = avgChange >= 0;
+    final currencyFormat = NumberFormat.currency(symbol: '\$');
 
     return Column(
       children: [
         // ── Market summary banner ─────────────────────────────────────────────
-        // A tinted strip showing the average market movement for the day.
+        // A tinted strip showing the average market movement and buying power.
         Container(
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -91,12 +96,11 @@ class _MarketOverviewScreenState extends State<MarketOverviewScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Market Average',
-                style: AppTheme.label,
-              ),
+              // Left: market average change
               Row(
                 children: [
+                  const Text('Market Avg', style: AppTheme.label),
+                  const SizedBox(width: 8),
                   Icon(
                     marketPositive
                         ? Icons.trending_up
@@ -115,6 +119,20 @@ class _MarketOverviewScreenState extends State<MarketOverviewScreen> {
                       color: marketPositive
                           ? AppTheme.positive
                           : AppTheme.negative,
+                    ),
+                  ),
+                ],
+              ),
+              // Right: buying power (cash balance)
+              Row(
+                children: [
+                  const Text('Cash ', style: AppTheme.label),
+                  Text(
+                    currencyFormat.format(portfolio.cashBalance),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.textPrimary,
                     ),
                   ),
                 ],
@@ -198,14 +216,25 @@ class _MarketOverviewScreenState extends State<MarketOverviewScreen> {
                     StockTile(
                       stock: stock,
                       onTap: () => _openDetail(context, stock.ticker),
+                      isLocked: !portfolio.isStockUnlocked(stock.ticker),
+                      unlockThreshold: kStockDefinitions
+                          .firstWhere((s) => s.ticker == stock.ticker)
+                          .unlockThreshold,
                     ),
                   ],
                 );
               }
 
+              final isLocked = !portfolio.isStockUnlocked(stock.ticker);
+              final unlockThreshold = kStockDefinitions
+                  .firstWhere((s) => s.ticker == stock.ticker)
+                  .unlockThreshold;
+
               return StockTile(
                 stock: stock,
                 onTap: () => _openDetail(context, stock.ticker),
+                isLocked: isLocked,
+                unlockThreshold: unlockThreshold,
               );
             },
           ),

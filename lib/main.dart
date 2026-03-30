@@ -19,6 +19,7 @@ import 'package:provider/provider.dart';
 
 import 'providers/market_provider.dart';
 import 'providers/portfolio_provider.dart';
+import 'providers/xp_provider.dart';
 import 'screens/home_screen.dart';
 import 'services/persistence_service.dart';
 import 'theme/app_theme.dart';
@@ -46,6 +47,10 @@ Future<void> main() async {
         // PortfolioProvider owns cash, holdings, and transaction history.
         ChangeNotifierProvider(
           create: (_) => PortfolioProvider(persistence),
+        ),
+        // XPProvider owns progression state: XP, levels, achievements, tips.
+        ChangeNotifierProvider(
+          create: (_) => XPProvider(persistence),
         ),
       ],
       child: const StockSimulatorApp(),

@@ -2,24 +2,21 @@
 // stock_detail_screen.dart
 //
 // PURPOSE: Full-page detail view for a single stock. Shows the current price,
-//          a price history chart, company info, the user's holding, and buy/sell
-//          buttons that open the BuySellBottomSheet.
+//          a price history chart, company info, the user's position(s), and
+//          action buttons that open the BuySellBottomSheet.
 //
-// RECEIVES: a `ticker` string from the navigation push in MarketOverviewScreen.
-//
-// LAYOUT (single scrollable Column):
-//   1. Price header — large price, change badge, previous close
-//   2. Sparkline chart — fl_chart line chart over priceHistory
-//   3. Company info card — name, sector, description
-//   4. Holdings card — shares owned, avg cost, unrealised P&L
-//   5. Buy / Sell buttons
-//   6. Recent events — last 5 events that mention this ticker
+// BUTTON LOGIC:
+//   • Locked stock             → all buttons disabled, lock banner shown
+//   • No position              → [Buy] [Short]
+//   • Has long holding         → [Buy] [Sell]   (Short disabled)
+//   • Has short position       → [Cover]         (Buy/Sell disabled)
 // ─────────────────────────────────────────────────────────────────────────────
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../data/stock_definitions.dart';
 import '../models/stock.dart';
 import '../providers/market_provider.dart';
 import '../providers/portfolio_provider.dart';
@@ -30,8 +27,10 @@ import '../widgets/event_card.dart';
 import '../widgets/buy_sell_bottom_sheet.dart';
 import '../models/transaction.dart';
 
+// Amber for short-related buttons.
+const _kShortAmber = Color(0xFFE3B341);
+
 class StockDetailScreen extends StatelessWidget {
-  /// The ticker symbol of the stock to display.
   final String ticker;
 
   const StockDetailScreen({super.key, required this.ticker});
@@ -41,7 +40,6 @@ class StockDetailScreen extends StatelessWidget {
     final market = context.watch<MarketProvider>();
     final portfolio = context.watch<PortfolioProvider>();
 
-    // Look up the stock — if somehow not found, show an error.
     final Stock? stock = market.stockByTicker(ticker);
     if (stock == null) {
       return Scaffold(
@@ -51,12 +49,16 @@ class StockDetailScreen extends StatelessWidget {
     }
 
     final holding = portfolio.holdingForTicker(ticker);
+    final shortPosition = portfolio.shortForTicker(ticker);
+    final isLocked = !portfolio.isStockUnlocked(ticker);
+    final unlockThreshold = kStockDefinitions
+        .firstWhere((s) => s.ticker == ticker)
+        .unlockThreshold;
     final currencyFormat = NumberFormat.currency(symbol: '\$');
 
-    // Filter events log to only those affecting this specific ticker.
     final relatedEvents = market.events
         .where((e) => e.affectedTicker == ticker)
-        .take(5) // show the 5 most recent events for this stock
+        .take(5)
         .toList();
 
     return Scaffold(
@@ -74,21 +76,41 @@ class StockDetailScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // ── Lock banner ─────────────────────────────────────────────────
+            if (isLocked && unlockThreshold != null)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 10),
+                color: AppTheme.border,
+                child: Row(
+                  children: [
+                    const Icon(Icons.lock_outline,
+                        size: 16, color: AppTheme.textMuted),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Unlocks at ${NumberFormat.currency(symbol: '\$', decimalDigits: 0).format(unlockThreshold)} portfolio value',
+                      style: AppTheme.caption,
+                    ),
+                  ],
+                ),
+              ),
+
             // ── 1. Price Header ─────────────────────────────────────────────
             _PriceHeader(stock: stock),
 
             const SizedBox(height: 4),
 
             // ── 2. Price Chart ──────────────────────────────────────────────
-            // Only render the chart if we have more than one data point.
             if (stock.priceHistory.length > 1)
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: SparklineChart(
                   prices: stock.priceHistory,
                   isPositive: stock.isPositive,
                   height: 180,
-                  showAxes: true, // show Y-axis labels in detail mode
+                  showAxes: true,
                 ),
               ),
 
@@ -100,13 +122,13 @@ class StockDetailScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Sector chip
                   Container(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
                       color: AppTheme.accent.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(AppTheme.badgeRadius),
+                      borderRadius:
+                          BorderRadius.circular(AppTheme.badgeRadius),
                     ),
                     child: Text(
                       stock.sector,
@@ -122,88 +144,107 @@ class StockDetailScreen extends StatelessWidget {
               ),
             ),
 
-            // ── 4. Holdings Card ────────────────────────────────────────────
-            _InfoCard(
-              title: 'Your Position',
-              child: holding == null
-                  // User doesn't own this stock yet.
-                  ? Text(
-                      "You don't own any ${stock.ticker} shares yet.",
-                      style: AppTheme.companyName,
-                    )
-                  // Show position details.
-                  : Column(
-                      children: [
-                        _StatRow(
-                          label: 'Shares Owned',
-                          value: '${holding.shares}',
-                        ),
-                        _StatRow(
-                          label: 'Avg Cost',
-                          value: currencyFormat
-                              .format(holding.averageCost),
-                        ),
-                        _StatRow(
-                          label: 'Current Value',
-                          value: currencyFormat
-                              .format(holding.currentValue(stock.currentPrice)),
-                        ),
-                        _StatRow(
-                          label: 'Unrealised P&L',
-                          value:
-                              '${currencyFormat.format(holding.unrealizedPnl(stock.currentPrice))}'
-                              ' (${holding.unrealizedPnlPercent(stock.currentPrice).toStringAsFixed(2)}%)',
-                          valueColor: holding.unrealizedPnl(stock.currentPrice) >= 0
+            // ── 4. Long Position Card ───────────────────────────────────────
+            if (holding != null)
+              _InfoCard(
+                title: 'Your Long Position',
+                child: Column(
+                  children: [
+                    _StatRow(
+                      label: 'Shares Owned',
+                      value: '${holding.shares}',
+                    ),
+                    _StatRow(
+                      label: 'Avg Cost',
+                      value: currencyFormat.format(holding.averageCost),
+                    ),
+                    _StatRow(
+                      label: 'Current Value',
+                      value: currencyFormat
+                          .format(holding.currentValue(stock.currentPrice)),
+                    ),
+                    _StatRow(
+                      label: 'Unrealised P&L',
+                      value:
+                          '${currencyFormat.format(holding.unrealizedPnl(stock.currentPrice))}'
+                          ' (${holding.unrealizedPnlPercent(stock.currentPrice).toStringAsFixed(2)}%)',
+                      valueColor:
+                          holding.unrealizedPnl(stock.currentPrice) >= 0
                               ? AppTheme.positive
                               : AppTheme.negative,
-                        ),
-                      ],
                     ),
-            ),
-
-            // ── 5. Buy / Sell Buttons ───────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Row(
-                children: [
-                  // Buy button — always enabled.
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () => _openBuySell(
-                          context, stock, TransactionType.buy, portfolio),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.positive,
-                        foregroundColor: Colors.white,
-                      ),
-                      child: const Text('Buy'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  // Sell button — disabled if user owns no shares.
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: holding == null
-                          ? null // disabled — nothing to sell
-                          : () => _openBuySell(
-                              context, stock, TransactionType.sell, portfolio),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.negative,
-                        foregroundColor: Colors.white,
-                        disabledBackgroundColor:
-                            AppTheme.negative.withValues(alpha: 0.3),
-                      ),
-                      child: const Text('Sell'),
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
+
+            // ── 5. Short Position Card ──────────────────────────────────────
+            if (shortPosition != null)
+              _InfoCard(
+                title: 'Your Short Position',
+                child: Column(
+                  children: [
+                    _StatRow(
+                      label: 'Shares Shorted',
+                      value: '${shortPosition.shares}',
+                    ),
+                    _StatRow(
+                      label: 'Entry Price',
+                      value: currencyFormat.format(shortPosition.entryPrice),
+                    ),
+                    _StatRow(
+                      label: 'Cover Cost',
+                      value: currencyFormat
+                          .format(shortPosition.coverCost(stock.currentPrice)),
+                    ),
+                    _StatRow(
+                      label: 'Unrealised P&L',
+                      value:
+                          '${currencyFormat.format(shortPosition.unrealizedPnl(stock.currentPrice))}'
+                          ' (${shortPosition.unrealizedPnlPercent(stock.currentPrice).toStringAsFixed(2)}%)',
+                      valueColor:
+                          shortPosition.unrealizedPnl(stock.currentPrice) >= 0
+                              ? AppTheme.positive
+                              : AppTheme.negative,
+                    ),
+                  ],
+                ),
+              ),
+
+            // ── 6. No position hint ─────────────────────────────────────────
+            if (holding == null && shortPosition == null && !isLocked)
+              _InfoCard(
+                title: 'Your Position',
+                child: Text(
+                  "You don't own any ${stock.ticker} shares yet.",
+                  style: AppTheme.companyName,
+                ),
+              ),
+
+            // ── 7. Action Buttons ───────────────────────────────────────────
+            Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: isLocked
+                  ? _LockedButtons(ticker: ticker, threshold: unlockThreshold)
+                  : shortPosition != null
+                      ? _ShortButtons(
+                          stock: stock,
+                          portfolio: portfolio,
+                          shortPosition: shortPosition,
+                          shortingUnlocked: portfolio.totalPortfolioValue(market.stocks) >= 1000,
+                        )
+                      : _LongButtons(
+                          stock: stock,
+                          portfolio: portfolio,
+                          holding: holding,
+                          shortingUnlocked: portfolio.totalPortfolioValue(market.stocks) >= 1000,
+                        ),
             ),
 
-            // ── 6. Recent Events ────────────────────────────────────────────
+            // ── 8. Recent Events ────────────────────────────────────────────
             if (relatedEvents.isNotEmpty) ...[
               const Padding(
-                padding:
-                    EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: Text('Recent News', style: AppTheme.headline),
               ),
               ...relatedEvents.map((event) => EventCard(event: event)),
@@ -213,17 +254,115 @@ class StockDetailScreen extends StatelessWidget {
       ),
     );
   }
+}
 
-  /// Opens the BuySellBottomSheet modal for the given transaction type.
-  void _openBuySell(
-    BuildContext context,
-    Stock stock,
-    TransactionType type,
-    PortfolioProvider portfolio,
-  ) {
+// ── Locked buttons ────────────────────────────────────────────────────────────
+
+class _LockedButtons extends StatelessWidget {
+  final String ticker;
+  final double? threshold;
+  const _LockedButtons({required this.ticker, required this.threshold});
+
+  @override
+  Widget build(BuildContext context) {
+    final label = threshold != null
+        ? 'Unlocks at ${NumberFormat.currency(symbol: '\$', decimalDigits: 0).format(threshold)}'
+        : 'Locked';
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        onPressed: null,
+        icon: const Icon(Icons.lock_outline, size: 16),
+        label: Text(label),
+        style: ElevatedButton.styleFrom(
+          disabledBackgroundColor: AppTheme.border,
+          disabledForegroundColor: AppTheme.textMuted,
+        ),
+      ),
+    );
+  }
+}
+
+// ── Long position buttons (Buy + Sell) ────────────────────────────────────────
+
+class _LongButtons extends StatelessWidget {
+  final Stock stock;
+  final PortfolioProvider portfolio;
+  final dynamic holding; // PortfolioHolding?
+  final bool shortingUnlocked;
+
+  const _LongButtons({
+    required this.stock,
+    required this.portfolio,
+    required this.holding,
+    required this.shortingUnlocked,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: ElevatedButton(
+                onPressed: () => _openSheet(context, TransactionType.buy),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.positive,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('Buy'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: ElevatedButton(
+                onPressed: holding == null
+                    ? null
+                    : () => _openSheet(context, TransactionType.sell),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.negative,
+                  foregroundColor: Colors.white,
+                  disabledBackgroundColor:
+                      AppTheme.negative.withValues(alpha: 0.3),
+                ),
+                child: const Text('Sell'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: ElevatedButton(
+                onPressed: shortingUnlocked
+                    ? () => _openSheet(context, TransactionType.short)
+                    : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _kShortAmber,
+                  foregroundColor: Colors.white,
+                  disabledBackgroundColor:
+                      _kShortAmber.withValues(alpha: 0.3),
+                ),
+                child: const Text('Short'),
+              ),
+            ),
+          ],
+        ),
+        if (!shortingUnlocked)
+          const Padding(
+            padding: EdgeInsets.only(top: 6),
+            child: Text(
+              'Reach \$1,000 portfolio value to unlock shorting',
+              style: AppTheme.caption,
+              textAlign: TextAlign.center,
+            ),
+          ),
+      ],
+    );
+  }
+
+  void _openSheet(BuildContext context, TransactionType type) {
     showModalBottomSheet(
       context: context,
-      // isScrollControlled allows the sheet to grow taller than 50% of screen.
       isScrollControlled: true,
       backgroundColor: AppTheme.surface,
       shape: const RoundedRectangleBorder(
@@ -240,10 +379,73 @@ class StockDetailScreen extends StatelessWidget {
   }
 }
 
-// ── Price Header Widget ───────────────────────────────────────────────────────
-//
-// Displays the large current price, change badge, and previous close.
-// Extracted into a private widget to keep the main build() method readable.
+// ── Short position buttons (Cover + Short More) ───────────────────────────────
+
+class _ShortButtons extends StatelessWidget {
+  final Stock stock;
+  final PortfolioProvider portfolio;
+  final dynamic shortPosition; // ShortPosition
+  final bool shortingUnlocked;
+
+  const _ShortButtons({
+    required this.stock,
+    required this.portfolio,
+    required this.shortPosition,
+    required this.shortingUnlocked,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: ElevatedButton(
+            onPressed: () => _openSheet(context, TransactionType.cover),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.accent,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Cover'),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: ElevatedButton(
+            onPressed: shortingUnlocked
+                ? () => _openSheet(context, TransactionType.short)
+                : null,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _kShortAmber,
+              foregroundColor: Colors.white,
+              disabledBackgroundColor: _kShortAmber.withValues(alpha: 0.3),
+            ),
+            child: const Text('Short More'),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _openSheet(BuildContext context, TransactionType type) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppTheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppTheme.cardRadius),
+        ),
+      ),
+      builder: (_) => BuySellBottomSheet(
+        stock: stock,
+        type: type,
+        portfolio: portfolio,
+      ),
+    );
+  }
+}
+
+// ── Price Header ──────────────────────────────────────────────────────────────
 
 class _PriceHeader extends StatelessWidget {
   final Stock stock;
@@ -257,7 +459,6 @@ class _PriceHeader extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Large current price.
           Text(
             currencyFormat.format(stock.currentPrice),
             style: AppTheme.priceDisplay,
@@ -265,7 +466,6 @@ class _PriceHeader extends StatelessWidget {
           const SizedBox(height: 6),
           Row(
             children: [
-              // Coloured change badge (e.g., "+2.4% / +$3.40")
               PriceChangeBadge(
                 changePercent: stock.changePercent,
                 changeAmount: stock.changeAmount,
@@ -278,27 +478,6 @@ class _PriceHeader extends StatelessWidget {
               ),
             ],
           ),
-          if (stock.isInUptrend || stock.isInDowntrend) ...[
-            const SizedBox(height: 6),
-            Row(
-              children: [
-                Icon(
-                  stock.isInUptrend ? Icons.trending_up : Icons.trending_down,
-                  size: 13,
-                  color: stock.isInUptrend ? AppTheme.positive : AppTheme.negative,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  '${stock.isInUptrend ? "UPTREND" : "DOWNTREND"} · ${stock.trendDaysRemaining}d remaining',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: stock.isInUptrend ? AppTheme.positive : AppTheme.negative,
-                  ),
-                ),
-              ],
-            ),
-          ],
         ],
       ),
     );
@@ -306,8 +485,6 @@ class _PriceHeader extends StatelessWidget {
 }
 
 // ── Generic Info Card ─────────────────────────────────────────────────────────
-//
-// A titled card container used for the "About" and "Your Position" sections.
 
 class _InfoCard extends StatelessWidget {
   final String title;
@@ -333,8 +510,6 @@ class _InfoCard extends StatelessWidget {
 }
 
 // ── Stat Row ──────────────────────────────────────────────────────────────────
-//
-// A label / value pair used inside the holdings card.
 
 class _StatRow extends StatelessWidget {
   final String label;

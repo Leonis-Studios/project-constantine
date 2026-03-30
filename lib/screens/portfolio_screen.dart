@@ -4,15 +4,13 @@
 // PURPOSE: Two-tab view of the user's financial position.
 //
 // TAB 1 — Holdings:
-//   • PortfolioSummaryCard at the top (total value, P&L, cash, invested)
-//   • ListView of HoldingTile — each row shows one owned stock
-//   • Tapping a tile navigates to StockDetailScreen
-//   • Empty state message if the portfolio has no holdings
+//   • PortfolioSummaryCard at the top
+//   • Long holdings (HoldingTile)
+//   • Short positions (ShortPositionTile) with a section header
+//   • Empty state if no long or short positions
 //
 // TAB 2 — History:
-//   • Chronological list of every buy and sell transaction
-//   • Each row shows: BUY/SELL chip, ticker, shares, price, total, timestamp
-//   • Empty state if no transactions have been made yet
+//   • All transactions: BUY (green), SELL (red), SHORT (amber), COVER (blue)
 // ─────────────────────────────────────────────────────────────────────────────
 
 import 'package:flutter/material.dart';
@@ -24,20 +22,22 @@ import '../providers/market_provider.dart';
 import '../providers/portfolio_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/holding_tile.dart';
+import '../widgets/short_position_tile.dart';
 import '../widgets/portfolio_summary_card.dart';
 import 'stock_detail_screen.dart';
+
+// Amber for SHORT chip.
+const _kShortAmber = Color(0xFFE3B341);
 
 class PortfolioScreen extends StatelessWidget {
   const PortfolioScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // DefaultTabController manages the selected tab index locally.
     return const DefaultTabController(
       length: 2,
       child: Column(
         children: [
-          // ── Tab bar ───────────────────────────────────────────────────────
           TabBar(
             tabs: [
               Tab(text: 'Holdings'),
@@ -48,8 +48,6 @@ class PortfolioScreen extends StatelessWidget {
             unselectedLabelColor: AppTheme.textSecondary,
           ),
           Divider(height: 1),
-
-          // ── Tab views ─────────────────────────────────────────────────────
           Expanded(
             child: TabBarView(
               children: [
@@ -74,8 +72,10 @@ class _HoldingsTab extends StatelessWidget {
     final market = context.watch<MarketProvider>();
     final portfolio = context.watch<PortfolioProvider>();
 
-    if (portfolio.holdings.isEmpty) {
-      // Empty state — user hasn't bought anything yet.
+    final hasLongs = portfolio.holdings.isNotEmpty;
+    final hasShorts = portfolio.shortPositions.isNotEmpty;
+
+    if (!hasLongs && !hasShorts) {
       return const Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -88,7 +88,7 @@ class _HoldingsTab extends StatelessWidget {
             ),
             SizedBox(height: 4),
             Text(
-              'Go to Market and buy some stocks!',
+              'Go to Market and buy or short some stocks!',
               style: TextStyle(color: AppTheme.textMuted, fontSize: 13),
             ),
           ],
@@ -99,33 +99,74 @@ class _HoldingsTab extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.only(bottom: 24),
       children: [
-        // Summary card at the very top.
         PortfolioSummaryCard(
           portfolio: portfolio,
           stocks: market.stocks,
         ),
         const SizedBox(height: 8),
 
-        // One HoldingTile per owned stock.
-        ...portfolio.holdings.map((holding) {
-          // Look up current price from the market provider.
-          final stock = market.stockByTicker(holding.ticker);
-          if (stock == null) return const SizedBox.shrink();
-
-          return HoldingTile(
-            holding: holding,
-            stock: stock,
-            onTap: () {
-              Navigator.push(
+        // ── Long holdings ───────────────────────────────────────────────────
+        if (hasLongs) ...[
+          if (hasShorts)
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 12, 16, 4),
+              child: Text(
+                'LONG POSITIONS',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textMuted,
+                  letterSpacing: 1.2,
+                ),
+              ),
+            ),
+          ...portfolio.holdings.map((holding) {
+            final stock = market.stockByTicker(holding.ticker);
+            if (stock == null) return const SizedBox.shrink();
+            return HoldingTile(
+              holding: holding,
+              stock: stock,
+              onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (_) =>
                       StockDetailScreen(ticker: holding.ticker),
                 ),
-              );
-            },
-          );
-        }),
+              ),
+            );
+          }),
+        ],
+
+        // ── Short positions ─────────────────────────────────────────────────
+        if (hasShorts) ...[
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 16, 16, 4),
+            child: Text(
+              'SHORT POSITIONS',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: _kShortAmber,
+                letterSpacing: 1.2,
+              ),
+            ),
+          ),
+          ...portfolio.shortPositions.map((position) {
+            final stock = market.stockByTicker(position.ticker);
+            if (stock == null) return const SizedBox.shrink();
+            return ShortPositionTile(
+              position: position,
+              stock: stock,
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) =>
+                      StockDetailScreen(ticker: position.ticker),
+                ),
+              ),
+            );
+          }),
+        ],
       ],
     );
   }
@@ -164,46 +205,66 @@ class _HistoryTab extends StatelessWidget {
       separatorBuilder: (_, __) => const Divider(height: 1, indent: 16),
       itemBuilder: (context, index) {
         final tx = portfolio.transactions[index];
-        final isBuy = tx.type == TransactionType.buy;
+
+        // Chip colour + label per transaction type.
+        final Color chipBg;
+        final Color chipFg;
+        final String chipLabel;
+        final Color amountColor;
+
+        switch (tx.type) {
+          case TransactionType.buy:
+            chipBg = AppTheme.positiveFaint;
+            chipFg = AppTheme.positive;
+            chipLabel = 'BUY';
+            amountColor = AppTheme.negative; // cash out
+          case TransactionType.sell:
+            chipBg = AppTheme.negativeFaint;
+            chipFg = AppTheme.negative;
+            chipLabel = 'SELL';
+            amountColor = AppTheme.positive; // cash in
+          case TransactionType.short:
+            chipBg = _kShortAmber.withValues(alpha: 0.15);
+            chipFg = _kShortAmber;
+            chipLabel = 'SHORT';
+            amountColor = AppTheme.positive; // received cash
+          case TransactionType.cover:
+            chipBg = AppTheme.accent.withValues(alpha: 0.15);
+            chipFg = AppTheme.accent;
+            chipLabel = 'COVER';
+            amountColor = AppTheme.negative; // paid cash
+        }
 
         return ListTile(
-          // BUY / SELL chip on the left.
           leading: Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: isBuy
-                  ? AppTheme.positiveFaint
-                  : AppTheme.negativeFaint,
-              borderRadius:
-                  BorderRadius.circular(AppTheme.badgeRadius),
+              color: chipBg,
+              borderRadius: BorderRadius.circular(AppTheme.badgeRadius),
             ),
             child: Text(
-              isBuy ? 'BUY' : 'SELL',
+              chipLabel,
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
-                color: isBuy ? AppTheme.positive : AppTheme.negative,
+                color: chipFg,
               ),
             ),
           ),
-          // Ticker and share count.
           title: Text(
             '${tx.ticker}  ×${tx.shares}',
             style: AppTheme.ticker.copyWith(fontSize: 14),
           ),
-          // Price per share.
           subtitle: Text(
             '${currencyFormat.format(tx.pricePerShare)} / share  •  ${dateFormat.format(tx.timestamp)}',
             style: AppTheme.caption,
           ),
-          // Total amount on the right.
           trailing: Text(
             currencyFormat.format(tx.totalAmount),
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: isBuy ? AppTheme.negative : AppTheme.positive,
+              color: amountColor,
             ),
           ),
         );

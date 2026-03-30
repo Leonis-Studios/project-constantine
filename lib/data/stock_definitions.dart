@@ -28,12 +28,18 @@ class StockSeed {
   final double initialPrice;
   final String description;
 
+  /// Portfolio value required to unlock this stock for trading.
+  /// null means the stock is available from the start of the game.
+  /// Once unlocked the player does NOT need to maintain this value.
+  final double? unlockThreshold;
+
   const StockSeed({
     required this.ticker,
     required this.companyName,
     required this.sector,
     required this.initialPrice,
     required this.description,
+    this.unlockThreshold,
   });
 
   /// Converts this seed into a fully initialised Stock object.
@@ -88,6 +94,7 @@ const List<StockSeed> kStockDefinitions = [
         'Gorkon develops AI-powered enterprise software that has achieved '
         'sentience twice and had to be talked down by HR. '
         'IPO was oversubscribed by gorilla investors.',
+    unlockThreshold: 750,
   ),
 
   // ── Energy (3 companies) ─────────────────────────────────────────────────
@@ -131,6 +138,7 @@ const List<StockSeed> kStockDefinitions = [
         'OuchMed\'s flagship product OuchAway® treats "general feelings of ow." '
         'Phase III trials showed 40% of patients forgot why they took it, '
         'which management filed as a success.',
+    unlockThreshold: 750,
   ),
   StockSeed(
     ticker: 'BOBO',
@@ -163,6 +171,7 @@ const List<StockSeed> kStockDefinitions = [
         'Definitely legitimate pyramid investment opportunities for the '
         'discerning investor. Founder insists the structure is '
         '"more of a rhombus, legally speaking."',
+    unlockThreshold: 1250,
   ),
   StockSeed(
     ticker: 'BRRR',
@@ -183,6 +192,7 @@ const List<StockSeed> kStockDefinitions = [
         'Digital asset custody for institutions. Stores client funds in what '
         'CEO describes as "a very secure spreadsheet." '
         'Auditors have requested a second opinion.',
+    unlockThreshold: 1250,
   ),
 
   // ── Consumer (3 companies) ───────────────────────────────────────────────
@@ -227,6 +237,7 @@ const List<StockSeed> kStockDefinitions = [
         'Defence contractor and aerospace propulsion company. Current DARPA '
         'contract involves a rocket they are not allowed to describe but '
         'which employees call "the tube."',
+    unlockThreshold: 2500,
   ),
   StockSeed(
     ticker: 'VRMV',

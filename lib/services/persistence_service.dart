@@ -29,6 +29,8 @@ import '../models/stock.dart';
 import '../models/market_event.dart';
 import '../models/portfolio_holding.dart';
 import '../models/transaction.dart';
+import '../models/short_position.dart';
+import '../models/insider_tip.dart';
 
 class PersistenceService {
   // The shared_preferences instance. Initialised once in init().
@@ -43,6 +45,12 @@ class PersistenceService {
   static const String _kCashBalanceKey = 'cash_balance_v1';
   static const String _kHoldingsKey = 'holdings_v1';
   static const String _kTransactionsKey = 'transactions_v1';
+  static const String _kUnlockedTickersKey = 'unlocked_tickers_v1';
+  static const String _kShortPositionsKey = 'short_positions_v1';
+  static const String _kXpTotalKey = 'xp_total_v1';
+  static const String _kXpAchievementsKey = 'xp_achievements_v1';
+  static const String _kXpTipsKey = 'xp_tips_v1';
+  static const String _kXpTradesKey = 'xp_trades_v1';
 
   // ── Initialisation ───────────────────────────────────────────────────────────
 
@@ -121,7 +129,7 @@ class PersistenceService {
   /// Loads cash balance. Returns the starting value ($10,000) if not yet saved.
   Future<double> loadCashBalance() async {
     final raw = _prefs.getString(_kCashBalanceKey);
-    if (raw == null) return 10000.00;
+    if (raw == null) return 500.00;
     return double.parse(raw);
   }
 
@@ -161,6 +169,82 @@ class PersistenceService {
         .toList();
   }
 
+  // ── Unlock state persistence ─────────────────────────────────────────────────
+
+  /// Saves the set of tickers the player has permanently unlocked.
+  Future<void> saveUnlockedTickers(Set<String> tickers) async {
+    final jsonString = jsonEncode(tickers.toList());
+    await _prefs.setString(_kUnlockedTickersKey, jsonString);
+  }
+
+  /// Loads the unlocked ticker set. Returns an empty set on first launch.
+  Future<Set<String>> loadUnlockedTickers() async {
+    final jsonString = _prefs.getString(_kUnlockedTickersKey);
+    if (jsonString == null) return {};
+    final List<dynamic> jsonList = jsonDecode(jsonString) as List<dynamic>;
+    return jsonList.cast<String>().toSet();
+  }
+
+  // ── Short positions persistence ──────────────────────────────────────────────
+
+  /// Saves all open short positions.
+  Future<void> saveShortPositions(List<ShortPosition> positions) async {
+    final jsonString =
+        jsonEncode(positions.map((p) => p.toJson()).toList());
+    await _prefs.setString(_kShortPositionsKey, jsonString);
+  }
+
+  /// Loads short positions. Returns an empty list on first launch.
+  Future<List<ShortPosition>> loadShortPositions() async {
+    final jsonString = _prefs.getString(_kShortPositionsKey);
+    if (jsonString == null) return [];
+    final List<dynamic> jsonList = jsonDecode(jsonString) as List<dynamic>;
+    return jsonList
+        .map((e) => ShortPosition.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  // ── XP / Achievement / Tip persistence ──────────────────────────────────────
+
+  /// Saves XP total, unlocked achievement IDs, tip history, and total trade count.
+  Future<void> saveXpState({
+    required int xp,
+    required Set<String> achievements,
+    required List<InsiderTip> tips,
+    required int totalTrades,
+  }) async {
+    await Future.wait([
+      _prefs.setInt(_kXpTotalKey, xp),
+      _prefs.setString(_kXpAchievementsKey, jsonEncode(achievements.toList())),
+      _prefs.setString(
+          _kXpTipsKey, jsonEncode(tips.map((t) => t.toJson()).toList())),
+      _prefs.setInt(_kXpTradesKey, totalTrades),
+    ]);
+  }
+
+  /// Loads XP state. Returns defaults on first launch.
+  Future<({int xp, Set<String> achievements, List<InsiderTip> tips, int totalTrades})>
+      loadXpState() async {
+    final xp = _prefs.getInt(_kXpTotalKey) ?? 0;
+    final totalTrades = _prefs.getInt(_kXpTradesKey) ?? 0;
+
+    final achievementsJson = _prefs.getString(_kXpAchievementsKey);
+    final achievements = achievementsJson == null
+        ? <String>{}
+        : (jsonDecode(achievementsJson) as List<dynamic>)
+            .cast<String>()
+            .toSet();
+
+    final tipsJson = _prefs.getString(_kXpTipsKey);
+    final tips = tipsJson == null
+        ? <InsiderTip>[]
+        : (jsonDecode(tipsJson) as List<dynamic>)
+            .map((e) => InsiderTip.fromJson(e as Map<String, dynamic>))
+            .toList();
+
+    return (xp: xp, achievements: achievements, tips: tips, totalTrades: totalTrades);
+  }
+
   // ── Full reset ───────────────────────────────────────────────────────────────
 
   /// Wipes all saved state. Called by MarketProvider.resetSimulation() and
@@ -174,6 +258,12 @@ class PersistenceService {
       _prefs.remove(_kCashBalanceKey),
       _prefs.remove(_kHoldingsKey),
       _prefs.remove(_kTransactionsKey),
+      _prefs.remove(_kUnlockedTickersKey),
+      _prefs.remove(_kShortPositionsKey),
+      _prefs.remove(_kXpTotalKey),
+      _prefs.remove(_kXpAchievementsKey),
+      _prefs.remove(_kXpTipsKey),
+      _prefs.remove(_kXpTradesKey),
     ]);
   }
 }

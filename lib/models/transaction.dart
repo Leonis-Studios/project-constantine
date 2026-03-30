@@ -10,8 +10,8 @@
 //   exact dollar amount at trade time gives an accurate transaction history.
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Distinguishes between buy and sell actions.
-enum TransactionType { buy, sell }
+/// Distinguishes between buy, sell, short, and cover actions.
+enum TransactionType { buy, sell, short, cover }
 
 class Transaction {
   /// A simple unique ID — we use ticker + timestamp milliseconds.

@@ -33,6 +33,7 @@ import '../data/stock_definitions.dart';
 import '../data/event_definitions.dart';
 import '../services/simulation_engine.dart';
 import '../services/persistence_service.dart';
+import 'portfolio_provider.dart';
 
 class MarketProvider extends ChangeNotifier {
   // ── Dependencies ─────────────────────────────────────────────────────────────
@@ -68,6 +69,14 @@ class MarketProvider extends ChangeNotifier {
   Timer? _autoAdvanceTimer;
   bool _isAutoAdvancing = false;
 
+  // Optional reference to PortfolioProvider so advanceDay() can trigger
+  // unlock checks when prices change without a trade.
+  PortfolioProvider? _portfolio;
+
+  /// Tickers newly unlocked on the last advanceDay() call.
+  /// The UI reads this to show unlock snackbars.
+  List<String> recentlyUnlocked = [];
+
   // ── Public getters (read-only) ───────────────────────────────────────────────
 
   /// All 20 stocks. The UI should never modify elements in this list directly.
@@ -84,6 +93,13 @@ class MarketProvider extends ChangeNotifier {
 
   /// True when the auto-advance timer is running.
   bool get isAutoAdvancing => _isAutoAdvancing;
+
+  /// Wires the PortfolioProvider so advanceDay() can trigger unlock checks
+  /// when stock prices move without any player trade. Call once from HomeScreen
+  /// after both providers have finished initialising.
+  void attachPortfolio(PortfolioProvider portfolio) {
+    _portfolio = portfolio;
+  }
 
   /// Returns the Stock with the given ticker, or null if not found.
   /// Used by StockDetailScreen and BuySellBottomSheet to look up a single stock.
@@ -162,6 +178,9 @@ class MarketProvider extends ChangeNotifier {
     _persistence.saveCurrentDay(_currentDay);
     _persistence.saveEvents(_events);
 
+    // Check whether price movements have triggered any stock unlocks.
+    recentlyUnlocked = _portfolio?.checkAndUnlockStocks(_stocks) ?? [];
+
     // Rebuild all listening widgets.
     notifyListeners();
   }
@@ -204,6 +223,7 @@ class MarketProvider extends ChangeNotifier {
     _stocks = kStockDefinitions.map((seed) => seed.toStock()).toList();
     _events = [];
     _currentDay = 0;
+    recentlyUnlocked = [];
 
     // Wipe persisted state so it doesn't load old data on next launch.
     await _persistence.clearAll();
