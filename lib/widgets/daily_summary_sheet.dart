@@ -3,55 +3,64 @@
 //
 // PURPOSE: End-of-day report shown as a modal bottom sheet every time the
 //          player presses "Next Day". Displays:
-//            • Portfolio value change (before → after)
+//            • Portfolio value change (session-open → now, updates live)
 //            • Holdings performance (each position, sorted best → worst)
+//            • Watchlist stocks not currently held
 //            • Market movers (top 3 gainers + top 3 losers across all stocks)
 //            • Today's events (headlines + impact badges)
-//            • Cash balance footer
+//
+// LIVE UPDATES: Uses context.watch on MarketProvider and PortfolioProvider so
+//               the sheet rebuilds automatically during auto-advance.
 //
 // HOW TO SHOW:
 //   showModalBottomSheet(
 //     context: context,
 //     isScrollControlled: true,
-//     builder: (_) => DailySummarySheet(...),
+//     builder: (_) => DailySummarySheet(portfolioValueAtOpen: valueBefore),
 //   );
 // ─────────────────────────────────────────────────────────────────────────────
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 
 import '../models/market_event.dart';
 import '../models/stock.dart';
+import '../providers/market_provider.dart';
 import '../providers/portfolio_provider.dart';
 import '../theme/app_theme.dart';
 
 class DailySummarySheet extends StatelessWidget {
-  final int dayNumber;
-  final double portfolioValueBefore;
-  final double portfolioValueAfter;
-  final List<Stock> stocks;
-  final PortfolioProvider portfolio;
-  final List<MarketEvent> todayEvents;
+  /// Portfolio value captured the moment the modal was opened.
+  /// Used as the baseline for the running delta.
+  final double portfolioValueAtOpen;
 
   const DailySummarySheet({
     super.key,
-    required this.dayNumber,
-    required this.portfolioValueBefore,
-    required this.portfolioValueAfter,
-    required this.stocks,
-    required this.portfolio,
-    required this.todayEvents,
+    required this.portfolioValueAtOpen,
   });
 
   @override
   Widget build(BuildContext context) {
+    // Live data — rebuilds on every day advance.
+    final market = context.watch<MarketProvider>();
+    final portfolio = context.watch<PortfolioProvider>();
+
     final currency = NumberFormat.currency(symbol: '\$');
-    final valueDelta = portfolioValueAfter - portfolioValueBefore;
-    final valueDeltaPct = portfolioValueBefore > 0
-        ? (valueDelta / portfolioValueBefore) * 100
+    final stocks = market.stocks;
+    final dayNumber = market.currentDay;
+    final portfolioValueNow = portfolio.totalPortfolioValue(stocks);
+    final valueDelta = portfolioValueNow - portfolioValueAtOpen;
+    final valueDeltaPct = portfolioValueAtOpen > 0
+        ? (valueDelta / portfolioValueAtOpen) * 100
         : 0.0;
     final deltaColor = valueDelta >= 0 ? AppTheme.positive : AppTheme.negative;
     final deltaSign = valueDelta >= 0 ? '+' : '';
+
+    // Today's events.
+    final todayEvents = market.events
+        .where((e) => e.dayNumber == dayNumber)
+        .toList();
 
     // Sort stocks by today's % change for movers section.
     final sortedStocks = List<Stock>.from(stocks)
@@ -74,6 +83,21 @@ class DailySummarySheet extends StatelessWidget {
       );
     }).toList()
       ..sort((a, b) => b.todayChangePct.compareTo(a.todayChangePct));
+
+    // Watched stocks that the player doesn't currently hold (avoiding dupes).
+    final heldTickers = portfolio.holdings.map((h) => h.ticker).toSet();
+    final watchlistRows = market.watchlist
+        .where((ticker) => !heldTickers.contains(ticker))
+        .map((ticker) {
+          try {
+            return stocks.firstWhere((s) => s.ticker == ticker);
+          } catch (_) {
+            return null;
+          }
+        })
+        .whereType<Stock>()
+        .toList()
+      ..sort((a, b) => b.changePercent.compareTo(a.changePercent));
 
     return Container(
       decoration: const BoxDecoration(
@@ -158,7 +182,7 @@ class DailySummarySheet extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  currency.format(portfolioValueAfter),
+                                  currency.format(portfolioValueNow),
                                   style: const TextStyle(
                                     fontSize: 26,
                                     fontWeight: FontWeight.w700,
@@ -168,7 +192,7 @@ class DailySummarySheet extends StatelessWidget {
                                 ),
                                 const SizedBox(height: 3),
                                 Text(
-                                  'was ${currency.format(portfolioValueBefore)}',
+                                  'was ${currency.format(portfolioValueAtOpen)}',
                                   style: AppTheme.caption,
                                 ),
                               ],
@@ -179,9 +203,9 @@ class DailySummarySheet extends StatelessWidget {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 10, vertical: 6),
                             decoration: BoxDecoration(
-                              color: (valueDelta >= 0
-                                      ? AppTheme.positiveFaint
-                                      : AppTheme.negativeFaint),
+                              color: valueDelta >= 0
+                                  ? AppTheme.positiveFaint
+                                  : AppTheme.negativeFaint,
                               borderRadius:
                                   BorderRadius.circular(AppTheme.cardRadius),
                             ),
@@ -210,7 +234,6 @@ class DailySummarySheet extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 10),
-                      // Cash row
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -244,6 +267,20 @@ class DailySummarySheet extends StatelessWidget {
                 ),
               ],
 
+              // ── Watchlist ─────────────────────────────────────────────────
+              if (watchlistRows.isNotEmpty) ...[
+                _SectionHeader(title: 'Watchlist'),
+                SliverToBoxAdapter(
+                  child: _SectionCard(
+                    child: Column(
+                      children: watchlistRows
+                          .map((s) => _WatchlistRowWidget(stock: s))
+                          .toList(),
+                    ),
+                  ),
+                ),
+              ],
+
               // ── Market movers ─────────────────────────────────────────────
               _SectionHeader(title: 'Market Movers'),
               SliverToBoxAdapter(
@@ -252,7 +289,6 @@ class DailySummarySheet extends StatelessWidget {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Gainers
                       Expanded(
                         child: _MoverColumn(
                           label: 'Top Gainers',
@@ -261,7 +297,6 @@ class DailySummarySheet extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 10),
-                      // Losers
                       Expanded(
                         child: _MoverColumn(
                           label: 'Top Losers',
@@ -375,7 +410,6 @@ class _HoldingRowWidget extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         children: [
-          // Ticker + company
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -395,7 +429,6 @@ class _HoldingRowWidget extends StatelessWidget {
               ],
             ),
           ),
-          // Today % change
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
@@ -410,6 +443,73 @@ class _HoldingRowWidget extends StatelessWidget {
               Text(
                 '$pnlSign${currency.format(pnl)} P&L',
                 style: TextStyle(fontSize: 10, color: color),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// One row inside the watchlist section (stocks not held).
+
+class _WatchlistRowWidget extends StatelessWidget {
+  final Stock stock;
+  const _WatchlistRowWidget({required this.stock});
+
+  @override
+  Widget build(BuildContext context) {
+    final pct = stock.changePercent;
+    final color = pct >= 0 ? AppTheme.positive : AppTheme.negative;
+    final sign = pct >= 0 ? '+' : '';
+    final currency = NumberFormat.currency(symbol: '\$');
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          const Icon(Icons.star, size: 12, color: AppTheme.accent),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(stock.ticker,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.textPrimary,
+                      fontFamily: 'monospace',
+                      letterSpacing: 0.8,
+                    )),
+                Text(
+                  stock.companyName,
+                  style: AppTheme.caption,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                currency.format(stock.currentPrice),
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textSecondary,
+                ),
+              ),
+              Text(
+                '$sign${pct.toStringAsFixed(2)}%',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: color,
+                ),
               ),
             ],
           ),

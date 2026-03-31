@@ -32,6 +32,7 @@ import 'market_overview_screen.dart';
 import 'portfolio_screen.dart';
 import 'events_log_screen.dart';
 import 'profile_screen.dart';
+import 'watchlist_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -44,10 +45,14 @@ class _HomeScreenState extends State<HomeScreen> {
   // Tracks which tab is currently shown (0 = Market, 1 = Portfolio, 2 = Events).
   int _selectedIndex = 0;
 
-  // The four main screens — built once and kept alive as the user switches tabs.
+  // Prevents stacking multiple daily summary modals during auto-advance.
+  bool _summaryOpen = false;
+
+  // The five main screens — built once and kept alive as the user switches tabs.
   static const List<Widget> _screens = [
     MarketOverviewScreen(),
     PortfolioScreen(),
+    WatchlistScreen(),
     EventsLogScreen(),
     ProfileScreen(),
   ];
@@ -85,7 +90,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
     // Capture state BEFORE advancing so the summary can show before/after.
     final double valueBefore = portfolio.totalPortfolioValue(market.stocks);
-    final int dayBefore = market.currentDay;
     final levelBefore = xp.currentLevel.level;
 
     await market.advanceDay();
@@ -135,14 +139,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     // Daily summary sheet — always shown after every day advance.
     if (context.mounted) {
-      _showDailySummary(
-        context,
-        dayNumber: market.currentDay,
-        valueBefore: valueBefore,
-        dayBefore: dayBefore,
-        portfolio: portfolio,
-        market: market,
-      );
+      _showDailySummary(context, valueBefore: valueBefore);
     }
   }
 
@@ -186,11 +183,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   /// Shows the full insider tip dialog (opened from the banner's "View →" button).
   void _showInsiderTipDialogFull(BuildContext context, InsiderTip tip) {
+    final market = context.read<MarketProvider>();
     showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (_) => InsiderTipDialog(
         tip: tip,
+        isWatched: market.isWatching(tip.ticker),
+        onToggleWatch: () => market.toggleWatchlist(tip.ticker),
         onDismiss: () {
           context.read<XPProvider>().dismissTip(tip.id);
           Navigator.of(context).pop();
@@ -200,29 +200,16 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   /// Shows the end-of-day summary as a modal bottom sheet.
-  void _showDailySummary(
-    BuildContext context, {
-    required int dayNumber,
-    required double valueBefore,
-    required int dayBefore,
-    required PortfolioProvider portfolio,
-    required MarketProvider market,
-  }) {
+  /// Guards against stacking multiple modals during auto-advance.
+  void _showDailySummary(BuildContext context, {required double valueBefore}) {
+    if (_summaryOpen) return;
+    _summaryOpen = true;
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => DailySummarySheet(
-        dayNumber: dayNumber,
-        portfolioValueBefore: valueBefore,
-        portfolioValueAfter: portfolio.totalPortfolioValue(market.stocks),
-        stocks: market.stocks,
-        portfolio: portfolio,
-        todayEvents: market.events
-            .where((e) => e.dayNumber == dayNumber)
-            .toList(),
-      ),
-    );
+      builder: (_) => DailySummarySheet(portfolioValueAtOpen: valueBefore),
+    ).whenComplete(() => _summaryOpen = false);
   }
 
   @override
@@ -297,6 +284,10 @@ class _HomeScreenState extends State<HomeScreen> {
           BottomNavigationBarItem(
             icon: Icon(Icons.pie_chart_outline),
             label: 'Portfolio',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.star_outline),
+            label: 'Watchlist',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.feed_outlined),

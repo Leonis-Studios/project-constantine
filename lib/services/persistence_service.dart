@@ -185,6 +185,24 @@ class PersistenceService {
     return jsonList.cast<String>().toSet();
   }
 
+  // ── Watchlist persistence ────────────────────────────────────────────────────
+
+  static const String _kWatchlistKey = 'watchlist_v1';
+
+  /// Saves the set of tickers the player has added to their watchlist.
+  Future<void> saveWatchlist(Set<String> tickers) async {
+    final jsonString = jsonEncode(tickers.toList());
+    await _prefs.setString(_kWatchlistKey, jsonString);
+  }
+
+  /// Loads the watchlist. Returns an empty set on first launch.
+  Future<Set<String>> loadWatchlist() async {
+    final jsonString = _prefs.getString(_kWatchlistKey);
+    if (jsonString == null) return {};
+    final List<dynamic> jsonList = jsonDecode(jsonString) as List<dynamic>;
+    return jsonList.cast<String>().toSet();
+  }
+
   // ── Short positions persistence ──────────────────────────────────────────────
 
   /// Saves all open short positions.
@@ -264,6 +282,7 @@ class PersistenceService {
       _prefs.remove(_kXpAchievementsKey),
       _prefs.remove(_kXpTipsKey),
       _prefs.remove(_kXpTradesKey),
+      _prefs.remove(_kWatchlistKey),
     ]);
   }
 }

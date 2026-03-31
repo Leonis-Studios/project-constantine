@@ -29,12 +29,20 @@ class StockTile extends StatelessWidget {
   /// The portfolio value needed to unlock this stock (shown on locked tiles).
   final double? unlockThreshold;
 
+  /// Whether this stock is in the player's watchlist.
+  final bool isWatched;
+
+  /// Callback to toggle watchlist status. If null, no star icon is shown.
+  final VoidCallback? onToggleWatch;
+
   const StockTile({
     super.key,
     required this.stock,
     required this.onTap,
     this.isLocked = false,
     this.unlockThreshold,
+    this.isWatched = false,
+    this.onToggleWatch,
   });
 
   @override
@@ -91,6 +99,20 @@ class StockTile extends StatelessWidget {
                             color: AppTheme.textMuted,
                           ),
                         ],
+                        if (onToggleWatch != null) ...[
+                          const SizedBox(width: 4),
+                          GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: onToggleWatch,
+                            child: Icon(
+                              isWatched ? Icons.star : Icons.star_outline,
+                              size: 14,
+                              color: isWatched
+                                  ? AppTheme.accent
+                                  : AppTheme.textMuted,
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                     const SizedBox(height: 2),
@@ -106,7 +128,7 @@ class StockTile extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 5, vertical: 1),
                         decoration: BoxDecoration(
-                          color: AppTheme.border,
+                          color: AppTheme.surfaceVariant,
                           borderRadius:
                               BorderRadius.circular(AppTheme.badgeRadius),
                         ),
@@ -120,7 +142,7 @@ class StockTile extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 5, vertical: 1),
                         decoration: BoxDecoration(
-                          color: AppTheme.border,
+                          color: AppTheme.surfaceVariant,
                           borderRadius:
                               BorderRadius.circular(AppTheme.badgeRadius),
                         ),

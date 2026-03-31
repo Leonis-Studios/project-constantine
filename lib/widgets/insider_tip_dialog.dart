@@ -10,18 +10,40 @@ import 'package:flutter/material.dart';
 import '../models/insider_tip.dart';
 import '../theme/app_theme.dart';
 
-class InsiderTipDialog extends StatelessWidget {
+class InsiderTipDialog extends StatefulWidget {
   final InsiderTip tip;
   final VoidCallback onDismiss;
+
+  /// Whether this stock is currently in the player's watchlist.
+  final bool isWatched;
+
+  /// Callback to toggle watchlist status. If null, button is hidden.
+  final VoidCallback? onToggleWatch;
 
   const InsiderTipDialog({
     super.key,
     required this.tip,
     required this.onDismiss,
+    this.isWatched = false,
+    this.onToggleWatch,
   });
 
   @override
+  State<InsiderTipDialog> createState() => _InsiderTipDialogState();
+}
+
+class _InsiderTipDialogState extends State<InsiderTipDialog> {
+  late bool _isWatched;
+
+  @override
+  void initState() {
+    super.initState();
+    _isWatched = widget.isWatched;
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final tip = widget.tip;
     final directionColor =
         tip.bullish ? AppTheme.positive : AppTheme.negative;
     final directionIcon =
@@ -165,11 +187,51 @@ class InsiderTipDialog extends StatelessWidget {
 
             const SizedBox(height: 20),
 
-            // ── Dismiss button ────────────────────────────────────────────────
+            // ── Watchlist + dismiss buttons ───────────────────────────────────
+            if (widget.onToggleWatch != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: TextButton.icon(
+                    onPressed: () {
+                      widget.onToggleWatch!();
+                      setState(() => _isWatched = !_isWatched);
+                    },
+                    icon: Icon(
+                      _isWatched ? Icons.star : Icons.star_outline,
+                      size: 16,
+                      color: _isWatched ? AppTheme.accent : AppTheme.textMuted,
+                    ),
+                    label: Text(
+                      _isWatched
+                          ? 'Watching ${tip.ticker}'
+                          : 'Watch ${tip.ticker}',
+                      style: TextStyle(
+                        color: _isWatched
+                            ? AppTheme.accent
+                            : AppTheme.textMuted,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    style: TextButton.styleFrom(
+                      side: BorderSide(
+                        color: _isWatched
+                            ? AppTheme.accent.withValues(alpha: 0.5)
+                            : AppTheme.border.withValues(alpha: 0.4),
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius:
+                            BorderRadius.circular(AppTheme.badgeRadius),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: onDismiss,
+                onPressed: widget.onDismiss,
                 child: const Text('Got it'),
               ),
             ),

@@ -21,42 +21,45 @@ class AppTheme {
 
   // ── Core palette ────────────────────────────────────────────────────────────
 
-  // The deepest background — used for Scaffold backgrounds.
-  static const Color background = Color(0xFF2D3840);
+  // The deepest background — near-black with a subtle blue undertone.
+  static const Color background = Color(0xFF050510);
 
-  // Slightly lighter surface — used for cards, tiles, and bottom sheets.
-  static const Color surface = Color(0xFF435058);
+  // Card and tile surfaces — dark navy, clearly distinct from background.
+  static const Color surface = Color(0xFF0D0D1A);
 
-  // Borders, dividers, and muted outlines.
-  static const Color border = Color(0xFF848C8E);
+  // Dark indigo — used for badge/chip fills so text stays readable on surfaces.
+  static const Color surfaceVariant = Color(0xFF1A1040);
 
-  // Primary interactive accent — buttons, active tab indicators.
-  static const Color accent = Color(0xFFDCF763);
+  // Borders, dividers, and muted outlines — subtle purple.
+  static const Color border = Color(0xFF2D2B55);
+
+  // Primary interactive accent — neon cyan, the signature cyberpunk color.
+  static const Color accent = Color(0xFF00E5FF);
 
   // ── Semantic price colors ────────────────────────────────────────────────────
 
-  // Green: price went up today, or a positive event.
-  static const Color positive = Color(0xFF3FB950);
+  // Green: price went up today, or a positive event — neon green.
+  static const Color positive = Color(0xFF00FF9F);
 
-  // Red: price went down today, or a negative event.
-  static const Color negative = Color(0xFFF85149);
+  // Red: price went down today, or a negative event — neon pink/red.
+  static const Color negative = Color(0xFFFF2D78);
 
   // Soft green for backgrounds (e.g., positive badge fill).
-  static const Color positiveFaint = Color(0xFF2A3A2A);
+  static const Color positiveFaint = Color(0xFF001A0F);
 
   // Soft red for backgrounds (e.g., negative badge fill).
-  static const Color negativeFaint = Color(0xFF3A2A2A);
+  static const Color negativeFaint = Color(0xFF1A000D);
 
   // ── Text colors ─────────────────────────────────────────────────────────────
 
-  // Main readable text — headlines, prices, tickers.
-  static const Color textPrimary = Color(0xFFF1F2EE);
+  // Main readable text — near-white with a slight blue tint for cyberpunk feel.
+  static const Color textPrimary = Color(0xFFE0E0FF);
 
-  // Supporting text — descriptions, secondary labels.
-  static const Color textSecondary = Color(0xFFBFB7B6);
+  // Supporting text — muted blue, readable on dark surfaces.
+  static const Color textSecondary = Color(0xFF9090C0);
 
-  // Muted/disabled text — timestamps, placeholders.
-  static const Color textMuted = Color(0xFF848C8E);
+  // Muted/disabled text — dim purple, for timestamps and placeholders.
+  static const Color textMuted = Color(0xFF5060A0);
 
   // ── Shape ───────────────────────────────────────────────────────────────────
 
@@ -113,7 +116,7 @@ class AppTheme {
   static const TextStyle caption = TextStyle(
     fontSize: 11,
     fontWeight: FontWeight.w400,
-    color: textMuted,
+    color: textSecondary,
   );
 
   // ── ThemeData factory ────────────────────────────────────────────────────────
@@ -173,7 +176,7 @@ class AppTheme {
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: accent,
-          foregroundColor: const Color(0xFF2D3840),
+          foregroundColor: background,
           textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(badgeRadius),

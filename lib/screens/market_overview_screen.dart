@@ -42,27 +42,49 @@ class _MarketOverviewScreenState extends State<MarketOverviewScreen> {
   // Default: show biggest gainers at the top.
   _SortMode _sortMode = _SortMode.gainers;
 
-  /// Returns a sorted copy of [stocks] according to the current _sortMode.
+  // Text search — filters the list by ticker or company name.
+  String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  /// Filters [stocks] to those matching the current search query.
+  List<Stock> _filtered(List<Stock> stocks) {
+    if (_searchQuery.isEmpty) return stocks;
+    final q = _searchQuery.toLowerCase();
+    return stocks
+        .where((s) =>
+            s.ticker.toLowerCase().contains(q) ||
+            s.companyName.toLowerCase().contains(q))
+        .toList();
+  }
+
+  /// Returns a sorted copy of [stocks] according to the current _sortMode,
+  /// with all locked stocks partitioned to the bottom.
   /// We always work on a copy — never mutate the provider's list.
-  List<Stock> _sorted(List<Stock> stocks) {
+  List<Stock> _sorted(List<Stock> stocks, PortfolioProvider portfolio) {
     final copy = List<Stock>.from(stocks);
     switch (_sortMode) {
       case _SortMode.gainers:
-        // Descending: highest positive change% first.
         copy.sort((a, b) => b.changePercent.compareTo(a.changePercent));
       case _SortMode.losers:
-        // Ascending: most negative change% first.
         copy.sort((a, b) => a.changePercent.compareTo(b.changePercent));
       case _SortMode.alphabetical:
         copy.sort((a, b) => a.ticker.compareTo(b.ticker));
       case _SortMode.sector:
-        // Primary sort by sector name, secondary by ticker within sector.
         copy.sort((a, b) {
           final sectorCmp = a.sector.compareTo(b.sector);
           return sectorCmp != 0 ? sectorCmp : a.ticker.compareTo(b.ticker);
         });
     }
-    return copy;
+    // Stable partition: preserve sort order within each group.
+    final unlocked = copy.where((s) => portfolio.isStockUnlocked(s.ticker)).toList();
+    final locked = copy.where((s) => !portfolio.isStockUnlocked(s.ticker)).toList();
+    return [...unlocked, ...locked];
   }
 
   @override
@@ -70,7 +92,7 @@ class _MarketOverviewScreenState extends State<MarketOverviewScreen> {
     // Watch both providers — rebuilds on price updates and unlock changes.
     final market = context.watch<MarketProvider>();
     final portfolio = context.watch<PortfolioProvider>();
-    final sorted = _sorted(market.stocks);
+    final sorted = _filtered(_sorted(market.stocks, portfolio));
 
     // Compute a quick market summary: net % change across all stocks.
     // This gives the user a one-glance "is the market up or down today?" view.
@@ -184,6 +206,49 @@ class _MarketOverviewScreenState extends State<MarketOverviewScreen> {
           ),
         ),
 
+        // ── Search field ──────────────────────────────────────────────────────
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          child: TextField(
+            controller: _searchController,
+            onChanged: (v) => setState(() => _searchQuery = v.trim()),
+            style: const TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+            decoration: InputDecoration(
+              hintText: 'Search ticker or company…',
+              hintStyle: const TextStyle(
+                  color: AppTheme.textMuted, fontSize: 14),
+              prefixIcon: const Icon(Icons.search,
+                  color: AppTheme.textMuted, size: 20),
+              suffixIcon: _searchQuery.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear,
+                          color: AppTheme.textMuted, size: 18),
+                      onPressed: () => setState(() {
+                        _searchQuery = '';
+                        _searchController.clear();
+                      }),
+                    )
+                  : null,
+              filled: true,
+              fillColor: AppTheme.surface,
+              contentPadding: const EdgeInsets.symmetric(vertical: 10),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AppTheme.badgeRadius),
+                borderSide: const BorderSide(color: AppTheme.border),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AppTheme.badgeRadius),
+                borderSide: const BorderSide(color: AppTheme.border),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AppTheme.badgeRadius),
+                borderSide:
+                    const BorderSide(color: AppTheme.accent, width: 1.5),
+              ),
+            ),
+          ),
+        ),
+
         // ── Stock list ────────────────────────────────────────────────────────
         Expanded(
           child: ListView.builder(
@@ -220,6 +285,8 @@ class _MarketOverviewScreenState extends State<MarketOverviewScreen> {
                       unlockThreshold: kStockDefinitions
                           .firstWhere((s) => s.ticker == stock.ticker)
                           .unlockThreshold,
+                      isWatched: market.isWatching(stock.ticker),
+                      onToggleWatch: () => market.toggleWatchlist(stock.ticker),
                     ),
                   ],
                 );
@@ -235,6 +302,8 @@ class _MarketOverviewScreenState extends State<MarketOverviewScreen> {
                 onTap: () => _openDetail(context, stock.ticker),
                 isLocked: isLocked,
                 unlockThreshold: unlockThreshold,
+                isWatched: market.isWatching(stock.ticker),
+                onToggleWatch: () => market.toggleWatchlist(stock.ticker),
               );
             },
           ),

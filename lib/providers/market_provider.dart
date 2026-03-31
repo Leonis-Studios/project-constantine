@@ -77,6 +77,9 @@ class MarketProvider extends ChangeNotifier {
   /// The UI reads this to show unlock snackbars.
   List<String> recentlyUnlocked = [];
 
+  // Tickers the player has added to their watchlist.
+  Set<String> _watchlist = {};
+
   // ── Public getters (read-only) ───────────────────────────────────────────────
 
   /// All 20 stocks. The UI should never modify elements in this list directly.
@@ -99,6 +102,23 @@ class MarketProvider extends ChangeNotifier {
   /// after both providers have finished initialising.
   void attachPortfolio(PortfolioProvider portfolio) {
     _portfolio = portfolio;
+  }
+
+  /// All tickers the player has added to their watchlist.
+  Set<String> get watchlist => Set.unmodifiable(_watchlist);
+
+  /// Returns true if [ticker] is in the player's watchlist.
+  bool isWatching(String ticker) => _watchlist.contains(ticker);
+
+  /// Adds or removes [ticker] from the watchlist and persists the change.
+  void toggleWatchlist(String ticker) {
+    if (_watchlist.contains(ticker)) {
+      _watchlist.remove(ticker);
+    } else {
+      _watchlist.add(ticker);
+    }
+    _persistence.saveWatchlist(_watchlist);
+    notifyListeners();
   }
 
   /// Returns the Stock with the given ticker, or null if not found.
@@ -135,6 +155,9 @@ class MarketProvider extends ChangeNotifier {
 
     // Restore the events log (defaults to empty list if not saved).
     _events = (await _persistence.loadEvents()) ?? [];
+
+    // Restore the watchlist (defaults to empty set if not saved).
+    _watchlist = await _persistence.loadWatchlist();
 
     // Done loading — release the spinner.
     _isLoading = false;
@@ -224,6 +247,7 @@ class MarketProvider extends ChangeNotifier {
     _events = [];
     _currentDay = 0;
     recentlyUnlocked = [];
+    _watchlist = {};
 
     // Wipe persisted state so it doesn't load old data on next launch.
     await _persistence.clearAll();
