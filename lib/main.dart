@@ -23,6 +23,7 @@ import 'providers/xp_provider.dart';
 import 'screens/home_screen.dart';
 import 'services/persistence_service.dart';
 import 'theme/app_theme.dart';
+import 'design_preview.dart';
 
 Future<void> main() async {
   // Must be called before any async work in main() because it initialises the
@@ -79,7 +80,8 @@ class StockSimulatorApp extends StatelessWidget {
 
       // HomeScreen is the root — it manages the BottomNavigationBar and
       // triggers the provider initialize() calls.
-      home: const HomeScreen(),
+      home: const DesignPreviewScreen(),
+      // home: const HomeScreen(),
     );
   }
 }
