@@ -20,7 +20,6 @@ import 'package:provider/provider.dart';
 import 'providers/market_provider.dart';
 import 'providers/portfolio_provider.dart';
 import 'providers/xp_provider.dart';
-import 'screens/home_screen.dart';
 import 'services/persistence_service.dart';
 import 'theme/app_theme.dart';
 import 'design_preview.dart';

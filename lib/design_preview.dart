@@ -6,18 +6,18 @@ import 'package:flutter/material.dart';
 // ═══════════════════════════════════════════════════════════════
 
 // ─── Color Palette ────────────────────────────────────────────
-const Color _bgDeep    = Color(0xFF0a0a0f);
-const Color _bgMid     = Color(0xFF0f0f1a);
-const Color _bgLight   = Color(0xFF12121f);
-const Color _stone     = Color(0xFF12121f);
+const Color _bgDeep = Color(0xFF0a0a0f);
+const Color _bgMid = Color(0xFF0f0f1a);
+const Color _bgLight = Color(0xFF12121f);
+const Color _stone = Color(0xFF12121f);
 const Color _stoneBorder = Color(0xFF1e1e3a);
-const Color _gold      = Color(0xFF00d4ff);   // cyan — primary accent
-const Color _goldBright = Color(0xFF00d4ff);  // cyan — highlights
-const Color _upGreen   = Color(0xFF00ff9d);   // profit
-const Color _downRed   = Color(0xFFff2d78);   // loss / alert
-const Color _textParch = Color(0xFFffffff);   // primary text
-const Color _textDim   = Color(0xFF8888aa);   // muted labels
-const Color _trackBg   = Color(0xFF070710);   // progress bar track
+const Color _gold = Color(0xFF00d4ff); // cyan — primary accent
+const Color _goldBright = Color(0xFF00d4ff); // cyan — highlights
+const Color _upGreen = Color(0xFF00ff9d); // profit
+const Color _downRed = Color(0xFFff2d78); // loss / alert
+const Color _textParch = Color(0xFFffffff); // primary text
+const Color _textDim = Color(0xFF8888aa); // muted labels
+const Color _trackBg = Color(0xFF070710); // progress bar track
 
 // ─── Hardcoded Data ───────────────────────────────────────────
 class _StockData {
@@ -45,12 +45,42 @@ const _StockData _legendary = _StockData(
 );
 
 const List<_StockData> _stocks = [
-  _StockData(ticker: 'AAPL', name: 'Golden Apple Inc', price: 224.10, change: 1.8, icon: '🪙'),
-  _StockData(ticker: 'TSLA', name: 'Thundersteed Motors', price: 178.30, change: -3.1, icon: '⚔️'),
-  _StockData(ticker: 'MSFT', name: 'Wizard Software Co', price: 415.20, change: 0.9, icon: '📜'),
-  _StockData(ticker: 'AMZN', name: 'Grand Exchange Ltd', price: 198.45, change: -1.4, icon: '🪙'),
-  _StockData(ticker: 'META', name: 'Scrying Glass Corp', price: 522.80, change: 2.6, icon: '🐉'),
-  _StockData(ticker: 'GOOGL', name: 'Oracle Search Guild', price: 171.60, change: -0.7, icon: '📜'),
+  _StockData(
+      ticker: 'AAPL',
+      name: 'Golden Apple Inc',
+      price: 224.10,
+      change: 1.8,
+      icon: '🪙'),
+  _StockData(
+      ticker: 'TSLA',
+      name: 'Thundersteed Motors',
+      price: 178.30,
+      change: -3.1,
+      icon: '⚔️'),
+  _StockData(
+      ticker: 'MSFT',
+      name: 'Wizard Software Co',
+      price: 415.20,
+      change: 0.9,
+      icon: '📜'),
+  _StockData(
+      ticker: 'AMZN',
+      name: 'Grand Exchange Ltd',
+      price: 198.45,
+      change: -1.4,
+      icon: '🪙'),
+  _StockData(
+      ticker: 'META',
+      name: 'Scrying Glass Corp',
+      price: 522.80,
+      change: 2.6,
+      icon: '🐉'),
+  _StockData(
+      ticker: 'GOOGL',
+      name: 'Oracle Search Guild',
+      price: 171.60,
+      change: -0.7,
+      icon: '📜'),
 ];
 
 // ─── Screen ───────────────────────────────────────────────────
@@ -88,35 +118,44 @@ class _DesignPreviewScreenState extends State<DesignPreviewScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _bgDeep,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _HudBar(),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    AnimatedBuilder(
-                      animation: _glowAnim,
-                      builder: (context, child) =>
-                          _LegendaryCard(glowOpacity: _glowAnim.value),
-                    ),
-                    const SizedBox(height: 16),
-                    _SectionHeader(label: '📜  Market Inventory'),
-                    const SizedBox(height: 8),
-                    ..._stocks.map((s) => Padding(
-                          padding: const EdgeInsets.only(bottom: 6),
-                          child: _StockItemCard(stock: s),
-                        )),
-                    const SizedBox(height: 80), // space for bottom bar
-                  ],
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [_bgDeep, _bgMid],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              _HudBar(),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      AnimatedBuilder(
+                        animation: _glowAnim,
+                        builder: (context, child) =>
+                            _LegendaryCard(glowOpacity: _glowAnim.value),
+                      ),
+                      const SizedBox(height: 16),
+                      const _SectionHeader(label: '📜  Market Inventory'),
+                      const SizedBox(height: 8),
+                      ..._stocks.map((s) => Padding(
+                            padding: const EdgeInsets.only(bottom: 6),
+                            child: _StockItemCard(stock: s),
+                          )),
+                      const SizedBox(height: 80), // space for bottom bar
+                    ],
+                  ),
                 ),
               ),
-            ),
-            _BottomActionBar(),
-          ],
+              _BottomActionBar(),
+            ],
+          ),
         ),
       ),
     );
@@ -128,102 +167,96 @@ class _HudBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: _stone,
-        border: const Border(
+        border: Border(
           bottom: BorderSide(color: _stoneBorder, width: 1),
-          top: BorderSide(color: _stoneBorder, width: 1),
         ),
       ),
-      child: Container(
-        decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(color: _gold.withValues(alpha: 0.15), width: 1),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          // Player name
+          const Row(
+            children: [
+              Text('⚔️', style: TextStyle(fontSize: 18)),
+              SizedBox(width: 8),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Adventurer_42',
+                    style: TextStyle(
+                      color: _textParch,
+                      fontFamily: 'monospace',
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    'Merchant Guild',
+                    style: TextStyle(
+                      color: _textDim,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w300,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
-          children: [
-            // Player name
-            Row(
-              children: [
-                const Text('⚔️', style: TextStyle(fontSize: 18)),
-                const SizedBox(width: 8),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Adventurer_42',
-                      style: TextStyle(
-                        color: _textParch,
-                        fontFamily: 'monospace',
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    Text(
-                      'Merchant Guild',
-                      style: TextStyle(
-                        color: _textDim,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w300,
-                        letterSpacing: 0.4,
-                      ),
-                    ),
+          const Spacer(),
+          // Gold total
+          Column(
+            children: [
+              Text(
+                '🪙 Gold: 142,500',
+                style: TextStyle(
+                  color: _goldBright,
+                  fontFamily: 'monospace',
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  shadows: [
+                    Shadow(
+                        color: _gold.withValues(alpha: 0.6), blurRadius: 10),
                   ],
                 ),
-              ],
-            ),
-            const Spacer(),
-            // Gold total
-            Column(
-              children: [
-                Text(
-                  '🪙 Gold: 142,500',
-                  style: TextStyle(
-                    color: _goldBright,
-                    fontFamily: 'monospace',
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    shadows: [
-                      Shadow(color: _gold.withValues(alpha: 0.6), blurRadius: 10),
-                    ],
-                  ),
-                ),
-                Text(
-                  'Portfolio Value',
-                  style: TextStyle(
-                    color: _textDim,
-                    fontSize: 9,
-                    fontWeight: FontWeight.w300,
-                    letterSpacing: 0.6,
-                  ),
-                ),
-              ],
-            ),
-            const Spacer(),
-            // Level badge
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: _bgDeep,
-                border: Border.all(color: _gold.withValues(alpha: 0.6), width: 1),
-                borderRadius: BorderRadius.circular(4),
               ),
-              child: Text(
-                'Lv. 12\nMerchant',
-                textAlign: TextAlign.center,
+              const Text(
+                'Portfolio Value',
                 style: TextStyle(
-                  color: _gold,
-                  fontFamily: 'monospace',
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                  height: 1.4,
+                  color: _textDim,
+                  fontSize: 9,
+                  fontWeight: FontWeight.w300,
+                  letterSpacing: 0.6,
                 ),
               ),
+            ],
+          ),
+          const Spacer(),
+          // Level badge
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: _bgDeep,
+              border:
+                  Border.all(color: _gold.withValues(alpha: 0.6), width: 1),
+              borderRadius: BorderRadius.circular(4),
             ),
-          ],
-        ),
+            child: const Text(
+              'Lv. 12\nMerchant',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: _gold,
+                fontFamily: 'monospace',
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                height: 1.4,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -237,6 +270,7 @@ class _LegendaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: _bgMid,
         border: Border.all(color: _goldBright, width: 1),
@@ -254,103 +288,106 @@ class _LegendaryCard extends StatelessWidget {
           ),
         ],
       ),
-      child: Container(
-        decoration: BoxDecoration(
-          border: Border.all(color: _gold.withValues(alpha: 0.2), width: 1),
-          borderRadius: BorderRadius.circular(5),
-        ),
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: _goldBright.withValues(alpha: 0.08),
-                    border: Border.all(color: _goldBright.withValues(alpha: 0.7), width: 1),
-                    borderRadius: BorderRadius.circular(3),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: _goldBright.withValues(alpha: 0.08),
+                  border: Border.all(
+                      color: _goldBright.withValues(alpha: 0.7), width: 1),
+                  borderRadius: BorderRadius.circular(3),
+                ),
+                child: const Text(
+                  '✦  LEGENDARY DROP  ✦',
+                  style: TextStyle(
+                    color: _goldBright,
+                    fontFamily: 'monospace',
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.4,
                   ),
-                  child: Text(
-                    '✦  LEGENDARY DROP  ✦',
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '🐉',
+                style: TextStyle(
+                  fontSize: 28,
+                  shadows: [
+                    Shadow(
+                        color: _goldBright.withValues(alpha: 0.8),
+                        blurRadius: 14)
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _legendary.ticker,
                     style: TextStyle(
                       color: _goldBright,
                       fontFamily: 'monospace',
-                      fontSize: 10,
+                      fontSize: 26,
                       fontWeight: FontWeight.bold,
-                      letterSpacing: 1.4,
+                      shadows: [
+                        Shadow(
+                            color: _gold.withValues(alpha: 0.7),
+                            blurRadius: 10)
+                      ],
                     ),
                   ),
-                ),
-                const Spacer(),
-                Text(
-                  '🐉',
-                  style: TextStyle(
-                    fontSize: 28,
-                    shadows: [Shadow(color: _goldBright.withValues(alpha: 0.8), blurRadius: 14)],
+                  Text(
+                    _legendary.name,
+                    style: const TextStyle(
+                      color: _textDim,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w300,
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _legendary.ticker,
-                      style: TextStyle(
-                        color: _goldBright,
-                        fontFamily: 'monospace',
-                        fontSize: 26,
-                        fontWeight: FontWeight.bold,
-                        shadows: [Shadow(color: _gold.withValues(alpha: 0.7), blurRadius: 10)],
-                      ),
-                    ),
-                    Text(
-                      _legendary.name,
-                      style: TextStyle(
-                        color: _textDim,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w300,
-                      ),
-                    ),
-                  ],
-                ),
-                const Spacer(),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      '${_legendary.price.toStringAsFixed(2)} gp',
-                      style: TextStyle(
-                        color: _textParch,
-                        fontFamily: 'monospace',
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    _StatBar(change: _legendary.change, width: 100),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Text(
-              'Examine: A powerful GPU rune of immense graphical magic.\nRarity: Legendary  •  Category: Technology',
-              style: TextStyle(
-                color: _textDim,
-                fontSize: 11,
-                fontWeight: FontWeight.w300,
-                height: 1.6,
+                ],
               ),
+              const Spacer(),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    '${_legendary.price.toStringAsFixed(2)} gp',
+                    style: const TextStyle(
+                      color: _textParch,
+                      fontFamily: 'monospace',
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  _StatBar(change: _legendary.change, width: 100),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          const Text(
+            'Examine: A powerful GPU rune of immense graphical magic.\nRarity: Legendary  •  Category: Technology',
+            style: TextStyle(
+              color: _textDim,
+              fontSize: 11,
+              fontWeight: FontWeight.w300,
+              height: 1.6,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -370,7 +407,7 @@ class _SectionHeader extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Text(
             label,
-            style: TextStyle(
+            style: const TextStyle(
               color: _textDim,
               fontSize: 11,
               fontWeight: FontWeight.w400,
@@ -387,13 +424,7 @@ class _SectionHeader extends StatelessWidget {
 class _Divider extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Container(height: 1, color: _stoneBorder),
-        const SizedBox(height: 2),
-        Container(height: 1, color: _stoneBorder.withValues(alpha: 0.4)),
-      ],
-    );
+    return Container(height: 1, color: _stoneBorder);
   }
 }
 
@@ -410,7 +441,7 @@ class _StockItemCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: _bgLight,
-        border: Border.all(color: _stoneBorder, width: 1),
+        border: Border.all(color: _gold.withValues(alpha: 0.15), width: 1),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Container(
@@ -433,7 +464,7 @@ class _StockItemCard extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     stock.ticker,
-                    style: TextStyle(
+                    style: const TextStyle(
                       color: _textParch,
                       fontFamily: 'monospace',
                       fontSize: 13,
@@ -451,7 +482,7 @@ class _StockItemCard extends StatelessWidget {
                 children: [
                   Text(
                     stock.name,
-                    style: TextStyle(
+                    style: const TextStyle(
                       color: _textDim,
                       fontSize: 11,
                       fontWeight: FontWeight.w300,
@@ -461,7 +492,7 @@ class _StockItemCard extends StatelessWidget {
                   const SizedBox(height: 3),
                   Text(
                     '${stock.price.toStringAsFixed(2)} gp',
-                    style: TextStyle(
+                    style: const TextStyle(
                       color: _textParch,
                       fontFamily: 'monospace',
                       fontSize: 14,
@@ -490,7 +521,6 @@ class _StatBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool isUp = change >= 0;
-    final Color barColor = isUp ? _upGreen : _downRed;
     final double fill = (change.abs() / 10).clamp(0.05, 1.0);
     final String label =
         '${isUp ? '▲' : '▼'} ${isUp ? '+' : ''}${change.toStringAsFixed(1)}%';
@@ -521,11 +551,11 @@ class _StatBar extends StatelessWidget {
             widthFactor: fill,
             child: Container(
               decoration: BoxDecoration(
-                color: barColor,
+                color: _gold,
                 borderRadius: BorderRadius.circular(1),
                 boxShadow: [
                   BoxShadow(
-                    color: barColor.withValues(alpha: 0.5),
+                    color: _gold.withValues(alpha: 0.5),
                     blurRadius: 4,
                   ),
                 ],
@@ -549,24 +579,17 @@ class _BottomActionBar extends StatelessWidget {
           top: BorderSide(color: _stoneBorder, width: 1),
         ),
       ),
-      child: Container(
-        decoration: BoxDecoration(
-          border: Border(
-            top: BorderSide(color: _gold.withValues(alpha: 0.15), width: 1),
-          ),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        child: Row(
-          children: [
-            _ActionButton(label: '⚔️ Buy', color: _upGreen),
-            const SizedBox(width: 8),
-            _ActionButton(label: '🪙 Sell', color: _downRed),
-            const SizedBox(width: 8),
-            _ActionButton(label: '📜 Examine', color: _stoneBorder),
-            const SizedBox(width: 8),
-            _ActionButton(label: '👁 Watch', color: _stoneBorder),
-          ],
-        ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      child: const Row(
+        children: [
+          _ActionButton(label: '⚔️ Buy', textColor: _upGreen),
+          SizedBox(width: 8),
+          _ActionButton(label: '🪙 Sell', textColor: _downRed),
+          SizedBox(width: 8),
+          _ActionButton(label: '📜 Examine', textColor: _textDim),
+          SizedBox(width: 8),
+          _ActionButton(label: '👁 Watch', textColor: _textDim),
+        ],
       ),
     );
   }
@@ -574,8 +597,8 @@ class _BottomActionBar extends StatelessWidget {
 
 class _ActionButton extends StatelessWidget {
   final String label;
-  final Color color;
-  const _ActionButton({required this.label, required this.color});
+  final Color textColor;
+  const _ActionButton({required this.label, required this.textColor});
 
   @override
   Widget build(BuildContext context) {
@@ -597,14 +620,14 @@ class _ActionButton extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 9),
           decoration: BoxDecoration(
             color: Colors.transparent,
-            border: Border.all(color: color.withValues(alpha: 0.6), width: 1),
+            border: Border.all(color: _gold.withValues(alpha: 0.6), width: 1),
             borderRadius: BorderRadius.circular(3),
           ),
           child: Text(
             label,
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: color == _stoneBorder ? _textDim : color,
+              color: textColor,
               fontFamily: 'monospace',
               fontSize: 11,
               fontWeight: FontWeight.w500,
