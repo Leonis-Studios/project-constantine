@@ -14,15 +14,21 @@
 //   4. HomeScreen triggers initialize() on both providers in its initState().
 // ─────────────────────────────────────────────────────────────────────────────
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'providers/ability_provider.dart';
 import 'providers/market_provider.dart';
 import 'providers/portfolio_provider.dart';
 import 'providers/xp_provider.dart';
 import 'services/persistence_service.dart';
+import 'systems/abilities/ability.dart';
+import 'systems/abilities/ability_service.dart';
 import 'theme/app_theme.dart';
-import 'design_preview.dart';
+import 'screens/home_screen.dart';
+import 'widgets/abilities/ability_unlock_toast.dart';
 
 Future<void> main() async {
   // Must be called before any async work in main() because it initialises the
@@ -34,20 +40,29 @@ Future<void> main() async {
   final persistence = PersistenceService();
   await persistence.init();
 
+  // Create the ability service and load its persisted state.
+  // The service is shared between MarketProvider and PortfolioProvider.
+  final abilityService = AbilityService();
+  await abilityService.loadState(persistence);
+
+  // Build providers, then wire the ability service into both.
+  final marketProvider = MarketProvider(persistence);
+  final portfolioProvider = PortfolioProvider(persistence);
+  marketProvider.attachAbilityService(abilityService);
+  portfolioProvider.attachAbilityService(abilityService);
+
+  // AbilityProvider wraps the same service instance for widget-tree access.
+  final abilityProvider = AbilityProvider(abilityService);
+
   runApp(
-    // MultiProvider injects both providers at the root of the widget tree.
-    // Order matters if providers depend on each other — here they're independent
-    // so order is arbitrary.
     MultiProvider(
       providers: [
         // MarketProvider owns all stock and event state.
-        ChangeNotifierProvider(
-          create: (_) => MarketProvider(persistence),
-        ),
+        ChangeNotifierProvider.value(value: marketProvider),
         // PortfolioProvider owns cash, holdings, and transaction history.
-        ChangeNotifierProvider(
-          create: (_) => PortfolioProvider(persistence),
-        ),
+        ChangeNotifierProvider.value(value: portfolioProvider),
+        // AbilityProvider exposes ability state (equipped, bench, cooldowns).
+        ChangeNotifierProvider.value(value: abilityProvider),
         // XPProvider owns progression state: XP, levels, achievements, tips.
         ChangeNotifierProvider(
           create: (_) => XPProvider(persistence),
@@ -79,8 +94,46 @@ class StockSimulatorApp extends StatelessWidget {
 
       // HomeScreen is the root — it manages the BottomNavigationBar and
       // triggers the provider initialize() calls.
-      home: const DesignPreviewScreen(),
-      // home: const HomeScreen(),
+      // home: const DesignPreviewScreen(),
+      home: const _AppRoot(),
     );
   }
+}
+
+// ── App root listener ─────────────────────────────────────────────────────────
+// Subscribes to AbilityService's unlock stream at the widget-tree root so any
+// screen can trigger a toast without needing its own listener.
+
+class _AppRoot extends StatefulWidget {
+  const _AppRoot();
+
+  @override
+  State<_AppRoot> createState() => _AppRootState();
+}
+
+class _AppRootState extends State<_AppRoot> {
+  StreamSubscription<Ability>? _unlockSub;
+
+  @override
+  void initState() {
+    super.initState();
+    // Wait one frame so context.read<AbilityProvider>() is available.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _unlockSub = context.read<AbilityProvider>().unlockStream.listen(
+        (ability) {
+          if (mounted) AbilityUnlockToast.show(context, ability);
+        },
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    _unlockSub?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => const HomeScreen();
 }

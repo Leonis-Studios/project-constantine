@@ -8,7 +8,8 @@
       "Bash(cmd.exe /c 'where flutter')",
       "Read(//mnt/c/src/flutter/**)",
       "Read(//c/src/flutter/**)",
-      "Bash(/d/flutter/bin/flutter analyze:*)"
+      "Bash(/d/flutter/bin/flutter analyze:*)",
+      "Bash(flutter analyze:*)"
     ]
   }
 }

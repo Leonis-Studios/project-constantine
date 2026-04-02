@@ -263,6 +263,38 @@ class PersistenceService {
     return (xp: xp, achievements: achievements, tips: tips, totalTrades: totalTrades);
   }
 
+  // ── Ability system persistence ───────────────────────────────────────────────
+
+  static const String _kAbilityStateKey = 'abilities_v1';
+
+  /// Saves the full ability system state (unlocked IDs, equipped slots, timers).
+  Future<void> saveAbilityState(Map<String, dynamic> state) async {
+    await _prefs.setString(_kAbilityStateKey, jsonEncode(state));
+  }
+
+  /// Loads the ability system state. Returns null on first launch.
+  Future<Map<String, dynamic>?> loadAbilityState() async {
+    final raw = _prefs.getString(_kAbilityStateKey);
+    if (raw == null) return null;
+    return jsonDecode(raw) as Map<String, dynamic>;
+  }
+
+  // ── Event engine persistence ─────────────────────────────────────────────────
+
+  static const String _kEventEngineStateKey = 'event_engine_v1';
+
+  /// Saves the event engine rolling state (cooldowns, streak history, peak).
+  Future<void> saveEventEngineState(Map<String, dynamic> state) async {
+    await _prefs.setString(_kEventEngineStateKey, jsonEncode(state));
+  }
+
+  /// Loads the event engine state. Returns null on first launch.
+  Future<Map<String, dynamic>?> loadEventEngineState() async {
+    final raw = _prefs.getString(_kEventEngineStateKey);
+    if (raw == null) return null;
+    return jsonDecode(raw) as Map<String, dynamic>;
+  }
+
   // ── Full reset ───────────────────────────────────────────────────────────────
 
   /// Wipes all saved state. Called by MarketProvider.resetSimulation() and
@@ -283,6 +315,8 @@ class PersistenceService {
       _prefs.remove(_kXpTipsKey),
       _prefs.remove(_kXpTradesKey),
       _prefs.remove(_kWatchlistKey),
+      _prefs.remove(_kAbilityStateKey),
+      _prefs.remove(_kEventEngineStateKey),
     ]);
   }
 }

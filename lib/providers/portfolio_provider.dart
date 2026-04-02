@@ -27,6 +27,7 @@ import '../models/short_position.dart';
 import '../models/transaction.dart';
 import '../data/stock_definitions.dart';
 import '../services/persistence_service.dart';
+import '../systems/abilities/ability_service.dart';
 
 class PortfolioProvider extends ChangeNotifier {
   // ── Constants ────────────────────────────────────────────────────────────────
@@ -37,6 +38,9 @@ class PortfolioProvider extends ChangeNotifier {
   // ── Dependencies ─────────────────────────────────────────────────────────────
 
   final PersistenceService _persistence;
+
+  // Optional — wired after construction via attachAbilityService().
+  AbilityService? _abilityService;
 
   // ── Private state ────────────────────────────────────────────────────────────
 
@@ -53,6 +57,14 @@ class PortfolioProvider extends ChangeNotifier {
   // ── Constructor ──────────────────────────────────────────────────────────────
 
   PortfolioProvider(this._persistence);
+
+  // ── Service wiring ───────────────────────────────────────────────────────────
+
+  /// Wires the AbilityService so buyStock / sellStock can apply modifiers.
+  /// Call once from main() after both services are constructed.
+  void attachAbilityService(AbilityService service) {
+    _abilityService = service;
+  }
 
   // ── Public getters (read-only) ───────────────────────────────────────────────
 
@@ -217,6 +229,11 @@ class PortfolioProvider extends ChangeNotifier {
       return 'Cover your short position in ${stock.ticker} before buying long.';
     }
 
+    // Stop Loss: cannot re-buy a ticker that was auto-sold within the ban window.
+    if (_abilityService?.isTickerStopLossBanned(stock.ticker) == true) {
+      return 'Stop Loss: cannot re-buy ${stock.ticker} for 1 hour after auto-sell.';
+    }
+
     final double cost = shares * stock.currentPrice;
 
     if (cost > _cashBalance) {
@@ -262,6 +279,14 @@ class PortfolioProvider extends ChangeNotifier {
     );
     _transactions = [tx, ..._transactions];
 
+    // Ability modifier for buys (e.g. Contrarian Signal stores a credit).
+    _abilityService?.applyTradeModifiers(
+      trade: tx,
+      history: _transactions,
+      holdings: _holdings,
+      stocks: [], // stocks list not needed for buy-side modifiers
+    );
+
     _persistPortfolio();
     notifyListeners();
     return null;
@@ -284,7 +309,31 @@ class PortfolioProvider extends ChangeNotifier {
       return 'You only own ${existing.shares} share${existing.shares == 1 ? '' : 's'} of ${stock.ticker}.';
     }
 
-    final double proceeds = shares * stock.currentPrice;
+    // Build the transaction record first so ability modifiers can inspect it.
+    final tx = Transaction(
+      id: '${stock.ticker}_${DateTime.now().millisecondsSinceEpoch}',
+      ticker: stock.ticker,
+      type: TransactionType.sell,
+      shares: shares,
+      pricePerShare: stock.currentPrice,
+      totalAmount: shares * stock.currentPrice,
+      timestamp: DateTime.now(),
+    );
+
+    // Check ability modifiers — may block or add a cash bonus.
+    double abilityBonus = 0.0;
+    if (_abilityService != null) {
+      final result = _abilityService!.applyTradeModifiers(
+        trade: tx,
+        history: _transactions,
+        holdings: _holdings,
+        stocks: [],
+      );
+      if (result.isBlocked) return result.blockReason;
+      abilityBonus = result.bonusAmount;
+    }
+
+    final double proceeds = tx.totalAmount + abilityBonus;
     _cashBalance += proceeds;
 
     final remainingShares = existing.shares - shares;
@@ -296,15 +345,6 @@ class PortfolioProvider extends ChangeNotifier {
         ..[existingIndex] = existing.copyWith(shares: remainingShares);
     }
 
-    final tx = Transaction(
-      id: '${stock.ticker}_${DateTime.now().millisecondsSinceEpoch}',
-      ticker: stock.ticker,
-      type: TransactionType.sell,
-      shares: shares,
-      pricePerShare: stock.currentPrice,
-      totalAmount: proceeds,
-      timestamp: DateTime.now(),
-    );
     _transactions = [tx, ..._transactions];
 
     _persistPortfolio();
@@ -425,6 +465,59 @@ class PortfolioProvider extends ChangeNotifier {
     _persistPortfolio();
     notifyListeners();
     return null;
+  }
+
+  /// Sells all [shares] of [stock] unconditionally — used by AbilityService's
+  /// stop-loss auto-sell. Bypasses ability modifier checks to prevent loops.
+  /// Returns null on success or an error string (e.g. if not held).
+  String? sellStockForAbility(Stock stock, int shares) {
+    if (shares <= 0) return null;
+    final existingIndex = _holdings.indexWhere((h) => h.ticker == stock.ticker);
+    if (existingIndex < 0) return 'Not held: ${stock.ticker}';
+
+    final existing = _holdings[existingIndex];
+    final sharesToSell = shares.clamp(0, existing.shares);
+    if (sharesToSell == 0) return null;
+
+    final double proceeds = sharesToSell * stock.currentPrice;
+    _cashBalance += proceeds;
+
+    final remaining = existing.shares - sharesToSell;
+    if (remaining == 0) {
+      _holdings = _holdings.where((h) => h.ticker != stock.ticker).toList();
+    } else {
+      _holdings = List.of(_holdings)
+        ..[existingIndex] = existing.copyWith(shares: remaining);
+    }
+
+    final tx = Transaction(
+      id: '${stock.ticker}_sl_${DateTime.now().millisecondsSinceEpoch}',
+      ticker: stock.ticker,
+      type: TransactionType.sell,
+      shares: sharesToSell,
+      pricePerShare: stock.currentPrice,
+      totalAmount: proceeds,
+      timestamp: DateTime.now(),
+    );
+    _transactions = [tx, ..._transactions];
+
+    _persistPortfolio();
+    notifyListeners();
+    return null;
+  }
+
+  // ── Ability cost deduction ────────────────────────────────────────────────────
+
+  /// Deducts [amount] from the cash balance after a successful ability swap.
+  ///
+  /// Call this immediately after [AbilityService.swapAbility] returns null.
+  /// Does nothing if [amount] exceeds the current balance (guard against
+  /// double-calls; the ability service already validated funds via canSwap).
+  void spendCash(double amount) {
+    if (amount <= 0 || amount > _cashBalance) return;
+    _cashBalance -= amount;
+    _persistPortfolio();
+    notifyListeners();
   }
 
   // ── Reset ────────────────────────────────────────────────────────────────────
