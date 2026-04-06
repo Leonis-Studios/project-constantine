@@ -30,36 +30,59 @@ import '../models/transaction.dart';
 // Amber for short-related buttons.
 const _kShortAmber = Color(0xFFE3B341);
 
-class StockDetailScreen extends StatelessWidget {
+class StockDetailScreen extends StatefulWidget {
   final String ticker;
 
   const StockDetailScreen({super.key, required this.ticker});
+
+  @override
+  State<StockDetailScreen> createState() => _StockDetailScreenState();
+}
+
+class _StockDetailScreenState extends State<StockDetailScreen> {
+  // Time range options: label → number of days (null = show all available)
+  static const _ranges = [
+    ('2W', 14),
+    ('1M', 30),
+    ('3M', 90),
+    ('1Y', 365),
+  ];
+  int _selectedRangeIndex = 0;
 
   @override
   Widget build(BuildContext context) {
     final market = context.watch<MarketProvider>();
     final portfolio = context.watch<PortfolioProvider>();
 
-    final Stock? stock = market.stockByTicker(ticker);
+    final Stock? stock = market.stockByTicker(widget.ticker);
     if (stock == null) {
       return Scaffold(
-        appBar: AppBar(title: Text(ticker)),
+        appBar: AppBar(title: Text(widget.ticker)),
         body: const Center(child: Text('Stock not found.')),
       );
     }
 
-    final holding = portfolio.holdingForTicker(ticker);
-    final shortPosition = portfolio.shortForTicker(ticker);
-    final isLocked = !portfolio.isStockUnlocked(ticker);
+    final holding = portfolio.holdingForTicker(widget.ticker);
+    final shortPosition = portfolio.shortForTicker(widget.ticker);
+    final isLocked = !portfolio.isStockUnlocked(widget.ticker);
     final unlockThreshold = kStockDefinitions
-        .firstWhere((s) => s.ticker == ticker)
+        .firstWhere((s) => s.ticker == widget.ticker)
         .unlockThreshold;
     final currencyFormat = NumberFormat.currency(symbol: '\$');
 
     final relatedEvents = market.events
-        .where((e) => e.affectedTicker == ticker)
+        .where((e) => e.affectedTicker == widget.ticker)
         .take(5)
         .toList();
+
+    // Slice price history according to selected range.
+    final int rangeDays = _ranges[_selectedRangeIndex].$2;
+    final List<double> allHistory = stock.priceHistory;
+    final List<double> displayedPrices = allHistory.length <= rangeDays
+        ? allHistory
+        : allHistory.sublist(allHistory.length - rangeDays);
+    // Day number of the first point in the displayed slice.
+    final int startDay = market.currentDay - displayedPrices.length + 1;
 
     return Scaffold(
       appBar: AppBar(
@@ -102,17 +125,60 @@ class StockDetailScreen extends StatelessWidget {
             const SizedBox(height: 4),
 
             // ── 2. Price Chart ──────────────────────────────────────────────
-            if (stock.priceHistory.length > 1)
+            if (displayedPrices.length > 1) ...[
               Padding(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: SparklineChart(
-                  prices: stock.priceHistory,
+                  prices: displayedPrices,
                   isPositive: stock.isPositive,
                   height: 180,
                   showAxes: true,
+                  startDay: startDay,
                 ),
               ),
+              // ── Time range selector ───────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: List.generate(_ranges.length, (i) {
+                    final selected = i == _selectedRangeIndex;
+                    return GestureDetector(
+                      onTap: () => setState(() => _selectedRangeIndex = i),
+                      child: Container(
+                        margin: const EdgeInsets.only(left: 6),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: selected
+                              ? AppTheme.accent.withValues(alpha: 0.15)
+                              : Colors.transparent,
+                          borderRadius:
+                              BorderRadius.circular(AppTheme.badgeRadius),
+                          border: Border.all(
+                            color:
+                                selected ? AppTheme.accent : AppTheme.border,
+                            width: 1,
+                          ),
+                        ),
+                        child: Text(
+                          _ranges[i].$1,
+                          style: AppTheme.caption.copyWith(
+                            color: selected
+                                ? AppTheme.accent
+                                : AppTheme.textMuted,
+                            fontWeight: selected
+                                ? FontWeight.w700
+                                : FontWeight.w400,
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+              ),
+            ],
 
             const SizedBox(height: 8),
 
@@ -225,7 +291,7 @@ class StockDetailScreen extends StatelessWidget {
               padding:
                   const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: isLocked
-                  ? _LockedButtons(ticker: ticker, threshold: unlockThreshold)
+                  ? _LockedButtons(ticker: widget.ticker, threshold: unlockThreshold)
                   : shortPosition != null
                       ? _ShortButtons(
                           stock: stock,

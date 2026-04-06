@@ -33,12 +33,17 @@ class SparklineChart extends StatelessWidget {
   /// When false, renders a clean line only (for list tiles).
   final bool showAxes;
 
+  /// The simulation day number of the FIRST price in [prices].
+  /// When provided and showAxes is true, tooltips show "Day N: $X.XX".
+  final int? startDay;
+
   const SparklineChart({
     super.key,
     required this.prices,
     required this.isPositive,
     this.height = 60,
     this.showAxes = false,
+    this.startDay,
   });
 
   @override
@@ -106,11 +111,14 @@ class SparklineChart extends StatelessWidget {
           lineTouchData: showAxes
               ? LineTouchData(
                   touchTooltipData: LineTouchTooltipData(
-                    // Show the price value when the user touches the chart.
                     getTooltipItems: (touchedSpots) {
                       return touchedSpots.map((spot) {
+                        final int index = spot.x.round();
+                        final String dayLabel = startDay != null
+                            ? 'Day ${startDay! + index}'
+                            : 'Day ${index + 1}';
                         return LineTooltipItem(
-                          '\$${spot.y.toStringAsFixed(2)}',
+                          '$dayLabel\n\$${spot.y.toStringAsFixed(2)}',
                           const TextStyle(
                             color: AppTheme.textPrimary,
                             fontSize: 12,
