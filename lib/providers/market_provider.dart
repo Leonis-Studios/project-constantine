@@ -136,6 +136,7 @@ class MarketProvider extends ChangeNotifier {
       stocks: _stocks,
       holdings: _portfolio?.holdings ?? [],
       cashBalance: _portfolio?.cashBalance ?? 0,
+      dayNumber: _currentDay + 1,
       rng: _rng,
     );
 

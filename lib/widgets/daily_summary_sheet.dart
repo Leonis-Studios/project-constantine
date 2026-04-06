@@ -312,10 +312,9 @@ class DailySummarySheet extends StatelessWidget {
               // ── Today's events ────────────────────────────────────────────
               if (todayEvents.isNotEmpty) ...[
                 _SectionHeader(title: "Today's Events"),
-                SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (_, i) => _EventRow(event: todayEvents[i]),
-                    childCount: todayEvents.length,
+                SliverToBoxAdapter(
+                  child: Column(
+                    children: todayEvents.map((e) => _EventRow(event: e)).toList(),
                   ),
                 ),
               ],
@@ -612,15 +611,20 @@ class _EventRow extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppTheme.surface,
         borderRadius: BorderRadius.circular(AppTheme.cardRadius),
-        border: Border(
-          left: BorderSide(color: color, width: 3),
-          top: const BorderSide(color: AppTheme.border, width: 1),
-          right: const BorderSide(color: AppTheme.border, width: 1),
-          bottom: const BorderSide(color: AppTheme.border, width: 1),
-        ),
+        border: Border.all(color: AppTheme.border, width: 1),
       ),
       child: Row(
         children: [
+          // Colored left accent dot.
+          Container(
+            width: 4,
+            height: 4,
+            margin: const EdgeInsets.only(right: 8),
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+            ),
+          ),
           Expanded(
             child: Text(
               event.headline,

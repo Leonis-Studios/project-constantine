@@ -1,5 +1,3 @@
-// TODO: Register this route in app router when ready
-
 // ─────────────────────────────────────────────────────────────────────────────
 // ability_screen.dart  (lib/screens/)
 //

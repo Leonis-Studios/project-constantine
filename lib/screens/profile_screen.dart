@@ -10,10 +10,12 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../data/achievement_definitions.dart';
+import '../providers/ability_provider.dart';
 import '../providers/market_provider.dart';
 import '../providers/portfolio_provider.dart';
 import '../providers/xp_provider.dart';
 import '../theme/app_theme.dart';
+import 'ability_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -171,6 +173,31 @@ class ProfileScreen extends StatelessWidget {
                   ],
                 ),
               ],
+            ),
+          ),
+        ),
+
+        // ── Abilities entry ───────────────────────────────────────────────────
+        Card(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          child: ListTile(
+            leading: const Icon(Icons.bolt_outlined, color: AppTheme.accent),
+            title: const Text('Abilities',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textPrimary,
+                )),
+            subtitle: const Text('Manage your equipped abilities',
+                style: AppTheme.caption),
+            trailing: const Icon(Icons.chevron_right, color: AppTheme.textMuted),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => AbilityScreen(
+                  abilityService:
+                      context.read<AbilityProvider>().service,
+                ),
+              ),
             ),
           ),
         ),

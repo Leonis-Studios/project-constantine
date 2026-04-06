@@ -60,6 +60,10 @@ class AbilityProvider extends ChangeNotifier {
   Duration? swapCooldownFor(AbilitySlot slot) =>
       _service.swapCooldownRemaining(slot);
 
+  /// Direct access to the underlying service — used when passing the service
+  /// instance to widgets that require it (e.g. AbilityScreen).
+  AbilityService get service => _service;
+
   /// Forwards the service's unlock stream so root widgets can listen without
   /// a direct reference to AbilityService.
   Stream<Ability> get unlockStream => _service.unlockStream;

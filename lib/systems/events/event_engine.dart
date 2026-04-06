@@ -35,7 +35,7 @@ import 'event_registry.dart';
 
 /// Maximum events that can fire in a single tick.
 /// Raise to allow more simultaneous market news; lower for a calmer feed.
-const int kMaxEventsPerTick = 2;
+const int kMaxEventsPerTick = 5;
 
 /// Number of top-scoring candidates that enter the final weighted random draw.
 /// Raise for more outcome variety; lower for more deterministic high-score wins.
@@ -47,7 +47,7 @@ const int kBullishStreakThreshold = 3;
 
 /// Consecutive bearish ticks before bullish/recovery events get a weight boost.
 /// Lower to accelerate recovery; raise to allow deeper bear markets.
-const int kBearishStreakThreshold = 3;
+const int kBearishStreakThreshold = 2;
 
 /// Fractional weight multiplier added when a streak condition is met.
 /// Raise for more dramatic reversals; lower for gentler market breathing.
@@ -121,9 +121,9 @@ class EventEngine {
   /// Used to detect bullish/bearish streaks.
   final List<EventDirection> _recentDirections = [];
 
-  /// Real-time timestamps of the last fire for each event ID.
-  /// Used to enforce per-event cooldowns.
-  final Map<String, DateTime> _lastFiredTimes = {};
+  /// Simulation day on which each event last fired, keyed by event ID.
+  /// Used to enforce per-event cooldowns in game-days (not wall-clock time).
+  final Map<String, int> _lastFiredDay = {};
 
   /// Magnitude of events from recent ticks, newest last.
   /// Used to compute the rolling volatility score.
@@ -161,6 +161,7 @@ class EventEngine {
   ///   [stocks]       — current stock prices (used for holding value calc)
   ///   [holdings]     — player's current holdings (for wealth gap & catch-up)
   ///   [cashBalance]  — player's current cash (included in portfolio value)
+  ///   [dayNumber]    — the simulation day being generated (used for cooldowns)
   ///   [rng]          — random number generator for weighted draw
   ///
   /// Returns up to [kMaxEventsPerTick] event definitions to fire.
@@ -168,6 +169,7 @@ class EventEngine {
     required List<Stock> stocks,
     required List<PortfolioHolding> holdings,
     required double cashBalance,
+    required int dayNumber,
     required Random rng,
   }) {
     // ── Step 1: Compute market state ────────────────────────────────────────
@@ -196,7 +198,7 @@ class EventEngine {
     final List<_ScoredEvent> scored = [];
 
     for (final event in EventRegistry.all) {
-      if (!_isCooledDown(event)) continue;
+      if (!_isCooledDown(event, dayNumber)) continue;
 
       double weight = event.baseProbability * 100.0;
       final List<String> factors = [];
@@ -293,7 +295,7 @@ class EventEngine {
     }
 
     // ── Step 7: Update state ─────────────────────────────────────────────────
-    _recordFired(selected);
+    _recordFired(selected, dayNumber);
 
     // Determine dominant direction of this tick for streak tracking.
     if (selected.isNotEmpty) {
@@ -304,9 +306,8 @@ class EventEngine {
       }
 
       // Record average magnitude for volatility tracking.
-      final avgMag =
-          selected.map((e) => e.magnitude).reduce((a, b) => a + b) /
-              selected.length;
+      final avgMag = selected.map((e) => e.magnitude).reduce((a, b) => a + b) /
+          selected.length;
       _recentMagnitudes.add(avgMag);
       if (_recentMagnitudes.length > kVolatilityHistoryLength) {
         _recentMagnitudes.removeAt(0);
@@ -314,7 +315,8 @@ class EventEngine {
     }
 
     // Update sector hint for next tick (Sector Scout ability).
-    _nextSectorHint = selected.isNotEmpty ? selected.first.affectedSector : null;
+    _nextSectorHint =
+        selected.isNotEmpty ? selected.first.affectedSector : null;
 
     // Log selections.
     for (final s in selected) {
@@ -334,7 +336,7 @@ class EventEngine {
 
   void reset() {
     _recentDirections.clear();
-    _lastFiredTimes.clear();
+    _lastFiredDay.clear();
     _recentMagnitudes.clear();
     _playerPeakPortfolioValue = 0.0;
     _ticksUntilGuaranteedCorrection = 0;
@@ -346,10 +348,8 @@ class EventEngine {
 
   Future<void> saveState(PersistenceService persistence) async {
     final state = <String, dynamic>{
-      'lastFiredTimes': _lastFiredTimes
-          .map((id, dt) => MapEntry(id, dt.toIso8601String())),
-      'recentDirections':
-          _recentDirections.map((d) => d.name).toList(),
+      'lastFiredDay': Map<String, int>.from(_lastFiredDay),
+      'recentDirections': _recentDirections.map((d) => d.name).toList(),
       'recentMagnitudes': _recentMagnitudes,
       'peakPortfolio': _playerPeakPortfolioValue,
       'guaranteedCorrectionCountdown': _ticksUntilGuaranteedCorrection,
@@ -361,18 +361,18 @@ class EventEngine {
     final state = await persistence.loadEventEngineState();
     if (state == null) return;
 
-    final firedMap = state['lastFiredTimes'] as Map<String, dynamic>? ?? {};
-    _lastFiredTimes.clear();
-    for (final entry in firedMap.entries) {
-      _lastFiredTimes[entry.key] = DateTime.parse(entry.value as String);
+    // Support both old wall-clock format ('lastFiredTimes') and new day format.
+    final firedDayMap = state['lastFiredDay'] as Map<String, dynamic>? ?? {};
+    _lastFiredDay.clear();
+    for (final entry in firedDayMap.entries) {
+      _lastFiredDay[entry.key] = (entry.value as num).toInt();
     }
 
     _recentDirections.clear();
     final dirList = state['recentDirections'] as List<dynamic>? ?? [];
     for (final name in dirList) {
       try {
-        _recentDirections
-            .add(EventDirection.values.byName(name as String));
+        _recentDirections.add(EventDirection.values.byName(name as String));
       } catch (_) {
         // Unknown direction name — skip.
       }
@@ -451,17 +451,17 @@ class EventEngine {
   }
 
   /// True if the event's cooldown period has expired (or it has never fired).
-  bool _isCooledDown(MarketEventDefinition event) {
-    final last = _lastFiredTimes[event.id];
-    if (last == null) return true;
-    return DateTime.now().difference(last).inHours >= event.cooldownHours;
+  /// Cooldown is measured in game-days so events fire regularly during play.
+  bool _isCooledDown(MarketEventDefinition event, int currentDay) {
+    final lastDay = _lastFiredDay[event.id];
+    if (lastDay == null) return true;
+    return (currentDay - lastDay) >= event.cooldownHours;
   }
 
   /// Rolling average of recent magnitudes, normalised to 0.0–1.0.
   double _computeVolatilityScore() {
     if (_recentMagnitudes.isEmpty) return 0.0;
-    return _recentMagnitudes.reduce((a, b) => a + b) /
-        _recentMagnitudes.length;
+    return _recentMagnitudes.reduce((a, b) => a + b) / _recentMagnitudes.length;
   }
 
   /// Picks one event from [candidates] by weighted random, skipping already
@@ -490,18 +490,19 @@ class EventEngine {
   /// Falls back to volatile if mixed.
   EventDirection _dominantDirection(List<MarketEventDefinition> events) {
     if (events.isEmpty) return EventDirection.neutral;
-    final bullish = events.where((e) => e.direction == EventDirection.bullish).length;
-    final bearish = events.where((e) => e.direction == EventDirection.bearish).length;
+    final bullish =
+        events.where((e) => e.direction == EventDirection.bullish).length;
+    final bearish =
+        events.where((e) => e.direction == EventDirection.bearish).length;
     if (bullish > bearish) return EventDirection.bullish;
     if (bearish > bullish) return EventDirection.bearish;
     return EventDirection.volatile;
   }
 
-  /// Records that [events] have fired by stamping their last-fired time.
-  void _recordFired(List<MarketEventDefinition> events) {
-    final now = DateTime.now();
+  /// Records that [events] have fired on [dayNumber].
+  void _recordFired(List<MarketEventDefinition> events, int dayNumber) {
     for (final e in events) {
-      _lastFiredTimes[e.id] = now;
+      _lastFiredDay[e.id] = dayNumber;
     }
   }
 }
