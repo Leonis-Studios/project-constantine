@@ -10,6 +10,18 @@
 // The static show() method inserts an OverlayEntry into the nearest Overlay
 // (rootOverlay: true so it sits above any Navigator pages). The entry removes
 // itself on dismiss — callers need no cleanup.
+//
+// KNOWN ISSUE — BLANK BANNER FIX:
+//   OverlayEntry widgets sit in the root overlay, which is above the
+//   MaterialApp's Theme/MediaQuery/Directionality scope in the widget tree.
+//   When the builder context lacks these inherited widgets, Text widgets
+//   render with no font metrics / no text direction and the card appears as a
+//   solid coloured block with no visible text.
+//   Fix: the builder explicitly wraps content in Directionality, MediaQuery,
+//   and Theme (all captured at call time from the caller's context) so text
+//   styles and layout resolve correctly regardless of where the overlay sits
+//   in the tree. If this regresses, check that all three captures in show()
+//   still happen BEFORE the OverlayEntry builder closure is created.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import 'package:flutter/material.dart';
@@ -24,11 +36,32 @@ class AbilityUnlockToast {
   /// Safe to call from any widget that is under MaterialApp.
   static void show(BuildContext context, Ability ability) {
     final overlay = Overlay.of(context, rootOverlay: true);
+    // Capture the caller's Theme and MediaQuery so the overlay entry has
+    // access to font metrics and text styles even though it sits above the
+    // MaterialApp's Theme in the widget tree.
+    final themeData = Theme.of(context);
+    final mediaQueryData = MediaQuery.of(context);
+    final textDirection = Directionality.of(context);
     late OverlayEntry entry;
+    bool removed = false;
     entry = OverlayEntry(
-      builder: (_) => _ToastOverlay(
-        ability: ability,
-        onDismiss: entry.remove,
+      builder: (_) => Directionality(
+        textDirection: textDirection,
+        child: MediaQuery(
+          data: mediaQueryData,
+          child: Theme(
+            data: themeData,
+            child: _ToastOverlay(
+              ability: ability,
+              onDismiss: () {
+                if (!removed) {
+                  removed = true;
+                  entry.remove();
+                }
+              },
+            ),
+          ),
+        ),
       ),
     );
     overlay.insert(entry);

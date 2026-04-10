@@ -41,12 +41,34 @@ class InsiderTipBanner extends StatefulWidget {
     required VoidCallback onView,
     required VoidCallback onIgnore,
   }) {
+    // Capture inherited widgets from the caller's context so the overlay entry
+    // has access to text direction, font metrics, and media queries even if
+    // it sits above MaterialApp's scope in the widget tree.
+    // See ability_unlock_toast.dart for the full explanation.
+    final themeData = Theme.of(context);
+    final mediaQueryData = MediaQuery.of(context);
+    final textDirection = Directionality.of(context);
     late OverlayEntry entry;
+    bool removed = false;
     entry = OverlayEntry(
-      builder: (_) => InsiderTipBanner(
-        tip: tip,
-        onView: onView,
-        onIgnore: onIgnore,
+      builder: (_) => Directionality(
+        textDirection: textDirection,
+        child: MediaQuery(
+          data: mediaQueryData,
+          child: Theme(
+            data: themeData,
+            child: InsiderTipBanner(
+              tip: tip,
+              onView: onView,
+              onIgnore: () {
+                if (!removed) {
+                  removed = true;
+                  onIgnore();
+                }
+              },
+            ),
+          ),
+        ),
       ),
     );
     Overlay.of(context).insert(entry);
