@@ -149,6 +149,10 @@ class MarketProvider extends ChangeNotifier {
     final bool volatileThisTick = selectedEvents
         .any((e) => e.direction == sys.EventDirection.volatile);
 
+    // Snapshot portfolio value before price update (used by Scar Tissue unlock).
+    final double portfolioValueBefore =
+        _portfolio?.totalPortfolioValue(_stocks) ?? 0.0;
+
     // ── 2. Run simulation engine (price updates + event application) ─────────
     final result = _engine.advanceOneDay(
       currentStocks: _stocks,
@@ -160,6 +164,11 @@ class MarketProvider extends ChangeNotifier {
     _stocks = result.updatedStocks;
     _events = [...result.events, ..._events];
     _currentDay += 1;
+
+    // Determine whether the day was profitable for Scar Tissue unlock.
+    final double portfolioValueAfter =
+        _portfolio?.totalPortfolioValue(_stocks) ?? 0.0;
+    final bool lastDayWasProfitable = portfolioValueAfter >= portfolioValueBefore;
 
     // ── 3. Stop-loss auto-sell ───────────────────────────────────────────────
     // Must run after prices update so we compare against new prices.
@@ -194,6 +203,10 @@ class MarketProvider extends ChangeNotifier {
             e.balancingTags.contains('correction') ||
             e.balancingTags.contains('anti-whale')),
         lastTickHadVolatileEvent: volatileThisTick,
+        currentDay: _currentDay,
+        cashBalance: _portfolio!.cashBalance,
+        lastDayWasProfitable: lastDayWasProfitable,
+        lastTickDirection: _eventEngine.lastTickDirection,
       );
     }
 

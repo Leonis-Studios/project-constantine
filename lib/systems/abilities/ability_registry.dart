@@ -90,6 +90,88 @@ const double kInsiderTipErrorRate = 0.25; // 25% wrong
 /// Raise to limit tip frequency; lower to allow more frequent signals.
 const int kInsiderTipCooldownHours = 24;
 
+// ── TIMING slot — iron_flipper ────────────────────────────────────────────────
+
+/// Number of profitable quick-sells required in a single simulated day to
+/// unlock Iron Flipper. Higher = harder to earn.
+const int kIronFlipperUnlockCount = 15;
+
+/// Bonus percentage on sells of a ticker the player has sold profitably before.
+const double kIronFlipperBonusPct = 0.09; // +9%
+
+/// Penalty percentage on sells of a ticker never previously sold profitably.
+const double kIronFlipperPenaltyPct = 0.06; // −6%
+
+// ── TIMING slot — trend_surfer ────────────────────────────────────────────────
+
+/// Number of distinct tickers the player must sell profitably during a strong
+/// uptrend (≥ kTrendSurferMinDaysRemaining) to unlock Trend Surfer.
+const int kTrendSurferUnlockTickers = 8;
+
+/// Minimum trendDaysRemaining on a stock for the Trend Surfer bonus to apply.
+/// Prevents the bonus from triggering when a trend is already peaking.
+const int kTrendSurferMinDaysRemaining = 3;
+
+/// Bonus percentage for qualifying Trend Surfer sells.
+const double kTrendSurferBonusPct = 0.08; // +8%
+
+// ── RISK slot — sector_arbiter ────────────────────────────────────────────────
+
+/// Number of distinct sectors that must have a profitable sell in one
+/// simulated day to unlock Sector Arbiter.
+const int kSectorArbiterUnlockSectors = 5;
+
+/// Minimum number of stocks the player must hold in the same sector
+/// (including the one being sold) for the Sector Arbiter bonus to apply.
+const int kSectorArbiterMinSameSectorCount = 3;
+
+/// Fraction of a loss offset when selling at a loss with Sector Arbiter.
+const double kSectorArbiterLossReductionPct = 0.40; // 40%
+
+/// Bonus percentage added to sells at a profit with Sector Arbiter.
+const double kSectorArbiterProfitBonusPct = 0.06; // +6%
+
+// ── RISK slot — scar_tissue ───────────────────────────────────────────────────
+
+/// Number of distinct losing trading days required to unlock Scar Tissue.
+const int kScarTissueUnlockLossDays = 10;
+
+/// Bonus per losing day that stacks on the next sell.
+const double kScarTissueStackBonusPerDay = 0.01; // +1% per day
+
+/// Maximum total sell bonus from stacked losing days.
+const int kScarTissueMaxStack = 10; // caps at +10%
+
+/// Minimum cash balance required to keep accumulating Scar Tissue stacks.
+/// Prevents the ability from stacking while effectively bankrupt.
+const double kScarTissueMinCash = 50.0;
+
+// ── INFO slot — macro_analyst ─────────────────────────────────────────────────
+
+/// Number of correctly-timed directional trades required to unlock Macro Analyst.
+const int kMacroAnalystUnlockCalls = 10;
+
+/// Probability that the Macro Analyst direction hint is wrong.
+const double kMacroHintErrorRate = 0.30; // 30% wrong
+
+/// Real-time hours between Macro Analyst hint activations.
+const int kMacroHintCooldownHours = 24;
+
+// ── INFO slot — pattern_recognition ──────────────────────────────────────────
+
+/// Number of simultaneously uptrending holdings required to unlock
+/// Pattern Recognition.
+const int kPatternRecognitionUnlockCount = 6;
+
+/// Minimum trendDaysRemaining for the Pattern Recognition profit bonus.
+const int kPatternRecognitionMinDaysRemaining = 2;
+
+/// Bonus percentage for sells during an uptrend with sufficient days remaining.
+const double kPatternRecognitionBonusPct = 0.04; // +4%
+
+/// Penalty percentage for sells of stocks currently in a downtrend.
+const double kPatternRecognitionPenaltyPct = 0.03; // −3%
+
 // ─────────────────────────────────────────────────────────────────────────────
 // ABILITY DEFINITIONS
 // ─────────────────────────────────────────────────────────────────────────────
@@ -287,6 +369,122 @@ class AbilityRegistry {
   );
 
   // ═══════════════════════════════════════════════════════════════════════════
+  // SLOT 1 — TIMING (advanced)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  static final Ability ironFlipper = Ability(
+    id: 'iron_flipper',
+    name: 'Iron Flipper',
+    description:
+        '+${(kIronFlipperBonusPct * 100).toStringAsFixed(0)}% on sells of '
+        'tickers you have previously sold profitably.',
+    slot: AbilitySlot.timing,
+    unlockCondition:
+        'Execute $kIronFlipperUnlockCount profitable quick-sells '
+        '(under ${kDayTraderWindowHours}h hold) within a single trading day.',
+    constraint:
+        '−${(kIronFlipperPenaltyPct * 100).toStringAsFixed(0)}% on sells of '
+        'any ticker you have never previously sold profitably.',
+    // Logic handled entirely by IronFlipperHandler — no onTradeModifier needed.
+  );
+
+  static final Ability trendSurfer = Ability(
+    id: 'trend_surfer',
+    name: 'Trend Surfer',
+    description:
+        '+${(kTrendSurferBonusPct * 100).toStringAsFixed(0)}% when selling a '
+        'stock in a strong uptrend ($kTrendSurferMinDaysRemaining+ trend days remaining).',
+    slot: AbilitySlot.timing,
+    unlockCondition:
+        'Sell $kTrendSurferUnlockTickers different stocks profitably while each '
+        'had an uptrend with $kTrendSurferMinDaysRemaining+ days remaining.',
+    constraint:
+        'No bonus if the trend has 1 or fewer days remaining — '
+        'you must catch the trend early, not at the peak.',
+    // Logic handled by TrendSurferHandler — needs List<Stock> access.
+  );
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SLOT 2 — RISK (advanced)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  static final Ability sectorArbiter = Ability(
+    id: 'sector_arbiter',
+    name: 'Sector Arbiter',
+    description:
+        'When selling in a sector where you hold $kSectorArbiterMinSameSectorCount+ '
+        'stocks: losses reduced by '
+        '${(kSectorArbiterLossReductionPct * 100).toStringAsFixed(0)}%, '
+        'profits boosted by '
+        '+${(kSectorArbiterProfitBonusPct * 100).toStringAsFixed(0)}%.',
+    slot: AbilitySlot.risk,
+    unlockCondition:
+        'In a single trading day, record profitable sells in '
+        '$kSectorArbiterUnlockSectors or more distinct sectors.',
+    constraint:
+        'No bonus if you hold fewer than $kSectorArbiterMinSameSectorCount '
+        'stocks in the selling sector.',
+    // Logic handled by SectorArbiterHandler.
+  );
+
+  static final Ability scarTissue = Ability(
+    id: 'scar_tissue',
+    name: 'Scar Tissue',
+    description:
+        'Each losing trading day stacks +'
+        '${(kScarTissueStackBonusPerDay * 100).toStringAsFixed(0)}% on your '
+        'next sell (up to +$kScarTissueMaxStack% max).',
+    slot: AbilitySlot.risk,
+    unlockCondition:
+        'Lose money on $kScarTissueUnlockLossDays distinct trading days '
+        'without going bankrupt (keep cash above \$${kScarTissueMinCash.toStringAsFixed(0)})'
+        '.',
+    constraint:
+        'Stack resets to 0 after any profitable trading day. '
+        'Bonus only applies while the stack is active.',
+    // Logic handled by ScarTissueHandler.
+  );
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SLOT 3 — INFO (advanced)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  static final Ability macroAnalyst = Ability(
+    id: 'macro_analyst',
+    name: 'Macro Analyst',
+    description:
+        'Once per day, see whether the next market tick will trend '
+        'bullish or bearish — with '
+        '${((1 - kMacroHintErrorRate) * 100).toStringAsFixed(0)}% accuracy.',
+    slot: AbilitySlot.info,
+    unlockCondition:
+        'Correctly anticipate $kMacroAnalystUnlockCalls market direction '
+        'changes — buy before a bullish flip or sell before a bearish flip.',
+    constraint:
+        'Direction only — not sector or specific event. '
+        '${(kMacroHintErrorRate * 100).toStringAsFixed(0)}% chance of being '
+        'wrong, shown as "unverified forecast."',
+    // Logic handled by MacroAnalystHandler via AbilityService.getMacroDirectionHint().
+  );
+
+  static final Ability patternRecognition = Ability(
+    id: 'pattern_recognition',
+    name: 'Pattern Recognition',
+    description:
+        '+${(kPatternRecognitionBonusPct * 100).toStringAsFixed(0)}% when '
+        'selling a stock in an uptrend with $kPatternRecognitionMinDaysRemaining+ '
+        'days remaining.',
+    slot: AbilitySlot.info,
+    unlockCondition:
+        'Hold $kPatternRecognitionUnlockCount or more stocks simultaneously '
+        'that are all trending up.',
+    constraint:
+        '−${(kPatternRecognitionPenaltyPct * 100).toStringAsFixed(0)}% on '
+        'sells of stocks currently in a downtrend.',
+    // Logic handled by PatternRecognitionHandler — needs List<Stock> access.
+  );
+
+  // ═══════════════════════════════════════════════════════════════════════════
   // MASTER LIST
   //
   // Add new Ability instances above, then reference them here.
@@ -298,13 +496,19 @@ class AbilityRegistry {
     dayTrader,
     patientInvestor,
     swingTrader,
+    ironFlipper,
+    trendSurfer,
     // Risk slot
     diamondHands,
     stopLoss,
     hedger,
+    sectorArbiter,
+    scarTissue,
     // Info slot
     contrarianSignal,
     sectorScout,
     insiderTipAbility,
+    macroAnalyst,
+    patternRecognition,
   ];
 }

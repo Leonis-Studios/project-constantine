@@ -145,6 +145,11 @@ class EventEngine {
 
   String? get nextSectorHint => _nextSectorHint;
 
+  /// The dominant direction of the most recently resolved tick.
+  /// Exposed for the Macro Analyst ability to predict next-tick direction.
+  EventDirection? get lastTickDirection =>
+      _recentDirections.isEmpty ? null : _recentDirections.last;
+
   /// Per-session log of selection decisions. Not persisted.
   final List<_SelectionLog> _log = [];
 
