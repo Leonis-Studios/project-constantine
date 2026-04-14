@@ -11,17 +11,21 @@
 // (rootOverlay: true so it sits above any Navigator pages). The entry removes
 // itself on dismiss — callers need no cleanup.
 //
-// KNOWN ISSUE — BLANK BANNER FIX:
-//   OverlayEntry widgets sit in the root overlay, which is above the
-//   MaterialApp's Theme/MediaQuery/Directionality scope in the widget tree.
-//   When the builder context lacks these inherited widgets, Text widgets
-//   render with no font metrics / no text direction and the card appears as a
-//   solid coloured block with no visible text.
-//   Fix: the builder explicitly wraps content in Directionality, MediaQuery,
-//   and Theme (all captured at call time from the caller's context) so text
-//   styles and layout resolve correctly regardless of where the overlay sits
-//   in the tree. If this regresses, check that all three captures in show()
-//   still happen BEFORE the OverlayEntry builder closure is created.
+// BLANK BANNER FIX (two-part):
+//   Part 1 — Missing inherited widgets:
+//     OverlayEntry widgets sit in the root overlay, which is above the
+//     MaterialApp's Theme/MediaQuery/Directionality scope in the widget tree.
+//     Fix: show() captures Theme, MediaQuery, Directionality, and
+//     DefaultTextStyle from the caller's context before building the entry,
+//     then wraps the entry content in all four so every widget inside has
+//     correct font metrics, text direction, and colour inheritance.
+//   Part 2 — Material(color: transparent) text-colour computation:
+//     Material(color: Colors.transparent) derives DefaultTextStyle colour by
+//     checking colour brightness. transparent has no luminance so Flutter
+//     picks Colors.black — invisible on the dark AppTheme.surface background.
+//     Fix: use Material(type: MaterialType.transparency) instead, which skips
+//     the colour-brightness computation and inherits text colour from the
+//     ambient DefaultTextStyle set up by the wrappers above.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import 'package:flutter/material.dart';
@@ -42,6 +46,8 @@ class AbilityUnlockToast {
     final themeData = Theme.of(context);
     final mediaQueryData = MediaQuery.of(context);
     final textDirection = Directionality.of(context);
+    final defaultTextStyle =
+        themeData.textTheme.bodyMedium ?? const TextStyle();
     late OverlayEntry entry;
     bool removed = false;
     entry = OverlayEntry(
@@ -51,14 +57,17 @@ class AbilityUnlockToast {
           data: mediaQueryData,
           child: Theme(
             data: themeData,
-            child: _ToastOverlay(
-              ability: ability,
-              onDismiss: () {
-                if (!removed) {
-                  removed = true;
-                  entry.remove();
-                }
-              },
+            child: DefaultTextStyle(
+              style: defaultTextStyle,
+              child: _ToastOverlay(
+                ability: ability,
+                onDismiss: () {
+                  if (!removed) {
+                    removed = true;
+                    entry.remove();
+                  }
+                },
+              ),
             ),
           ),
         ),
@@ -134,7 +143,7 @@ class _ToastOverlayState extends State<_ToastOverlay>
           child: GestureDetector(
             onTap: _dismiss,
             child: Material(
-              color: Colors.transparent,
+              type: MaterialType.transparency,
               child: _ToastCard(ability: widget.ability),
             ),
           ),
@@ -155,19 +164,18 @@ class _ToastCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final slotColor = _slotColor(ability.slot);
 
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border(
-          top: const BorderSide(color: AppTheme.border),
-          right: const BorderSide(color: AppTheme.border),
-          bottom: const BorderSide(color: AppTheme.border),
-          left: BorderSide(color: slotColor, width: 3),
-        ),
-      ),
-      child: Column(
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(14),
+      child: Stack(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppTheme.surface,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppTheme.border),
+            ),
+            child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -223,6 +231,15 @@ class _ToastCard extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+        ],
+            ),
+          ),
+          Positioned(
+            left: 0,
+            top: 0,
+            bottom: 0,
+            child: Container(width: 3, color: slotColor),
           ),
         ],
       ),
